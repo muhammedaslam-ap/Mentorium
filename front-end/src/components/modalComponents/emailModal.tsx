@@ -1,21 +1,10 @@
-'use client';
+"use client";
 
-import type React from 'react';
+import React, { useState } from "react";
+import { Modal, Button, Input, Typography, Space } from "antd";
+import { Check, X } from "lucide-react";
 
-import { useState } from 'react';
-import { Check, X } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+const { Title, Text } = Typography;
 
 interface EmailModalProps {
   open: boolean;
@@ -23,12 +12,12 @@ interface EmailModalProps {
   onEmailVerified: (email: string) => void;
 }
 
-export function EmailModal({
+const EmailModal: React.FC<EmailModalProps> = ({
   open,
   onOpenChange,
   onEmailVerified,
-}: EmailModalProps) {
-  const [email, setEmail] = useState('');
+}) => {
+  const [email, setEmail] = useState<string>("");
   const [isValid, setIsValid] = useState<boolean | null>(null);
 
   const validateEmail = (email: string) => {
@@ -48,56 +37,87 @@ export function EmailModal({
     if (valid) {
       setTimeout(() => {
         onEmailVerified(email);
-        setEmail('');
+        setEmail("");
+        onOpenChange(false);
       }, 1000);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Verify Email</DialogTitle>
-          <DialogDescription>
-            Please enter your email address to continue.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
+    <Modal
+      open={open}
+      onCancel={() => onOpenChange(false)}
+      footer={null}
+      centered
+      width={425}
+    >
+      <div className="p-4">
+        <Title level={4}>Verify Email</Title>
+        <Text type="secondary">
+          Please enter your email address to continue.
+        </Text>
+
+        <Space direction="vertical" size="large" style={{ width: "100%", marginTop: 24 }}>
+          <div>
+            <Text>Email</Text>
+            <div style={{ position: "relative" }}>
               <Input
                 id="email"
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={handleEmailChange}
-                className={isValid === false ? 'border-destructive pr-10' : ''}
+                style={{
+                  marginTop: 8,
+                  paddingRight: isValid !== null ? 40 : 12,
+                  borderColor: isValid === false ? "#ff4d4f" : undefined,
+                }}
               />
               {isValid === true && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
-                  <Check className="h-5 w-5" />
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#52c41a",
+                  }}
+                >
+                  <Check style={{ width: 20, height: 20 }} />
                 </div>
               )}
               {isValid === false && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-destructive">
-                  <X className="h-5 w-5" />
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#ff4d4f",
+                  }}
+                >
+                  <X style={{ width: 20, height: 20 }} />
                 </div>
               )}
             </div>
             {isValid === false && (
-              <p className="text-sm text-destructive">
+              <Text type="danger" style={{ fontSize: 12, marginTop: 8 }}>
                 Please enter a valid email address
-              </p>
+              </Text>
             )}
           </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={handleVerify} disabled={!email}>
+          <Button
+            type="primary"
+            onClick={handleVerify}
+            disabled={!email}
+            style={{ width: "100%" }}
+          >
             Verify
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </Space>
+      </div>
+    </Modal>
   );
-}
+};
+
+export default EmailModal;

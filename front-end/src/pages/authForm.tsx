@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
-import { OTPModal } from '@/components/modalComponents/otpModal';
+import  OTPModal  from '@/components/modalComponents/otpModal';
 import { toast } from 'sonner';
 import {
   loginSchema,
@@ -34,18 +34,18 @@ import {
   LoginFormData,
   RegisterFormData,
 } from '@/validation';
-import { EmailModal } from '@/components/modal-components/EmailModal';
+import EmailModal  from '@/components/modalComponents/emailModal';
 import { authAxiosInstance } from '@/api/authAxiosInstance';
-import { sendOtp } from '@/services/otpService/axiosOTPSend';
-import { verifyEmail } from '@/services/userService/verfiyEmail';
-import { sendOtpForgetPassword } from '@/services/otpService/axiosOtpSendForForgetPassword';
-import { verifyOtp } from '@/services/otpService/verifyOtp';
-import { userAuthService } from '@/services/userService/authUser';
+import { sendOtp } from '@/services/otpServices/otpServices';
+import { verifyEmail } from '@/services/userServices/verifyEmail';
+// import { sendOtpForgetPassword } from '@/services/otpService/axiosOtpSendForForgetPassword';
+import { verifyOtp } from '@/services/otpServices/verifyOtp';
+import { userAuthService } from '@/services/userServices/authServices';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { addUser } from '@/redux/slice/userSlice';
-import { PasswordResetModal } from '@/components/modal-components/passwordResetModal';
-import { GoogleAuth } from '@/components/googleAuth/googleAuthComponent';
+// import { PasswordResetModal } from '@/components/modal-components/passwordResetModal';
+// import { GoogleAuth } from '@/components/googleAuth/googleAuthComponent';
 
 export type UserRole = 'admin' | 'user' | 'tutor';
 
@@ -71,8 +71,8 @@ export default function AuthForm({
   const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [forgetPasswordEmail, setForgetPasswordEmail] = useState('');
-  const [isPasswordResetModalOpen, setIsPasswordResetModalOpen] =
-    useState(false);
+  // const [isPasswordResetModalOpen, setIsPasswordResetModalOpen] =
+  //   useState(false);
   const [data, setData] = useState <LoginFormData>();
 
   const navigate = useNavigate();
@@ -162,7 +162,7 @@ export default function AuthForm({
       setIsOTPModalOpen(false);
       setIsEmailModalOpen(false);
       if (forgetPasswordEmail) {
-        setIsPasswordResetModalOpen(true);
+        // setIsPasswordResetModalOpen(true);
       } else if (data.email) {
         handleRegisterUser();
       }
@@ -211,28 +211,28 @@ export default function AuthForm({
 
   const roleConfig = getRoleConfig(activeRole);
 
-  const resetPassword = async (email: string, newPassword: string) => {
-    const response = await authAxiosInstance.post('/auth/resetPassword', {
-      email,
-      newPassword,
-    });
-    return response.data;
-  };
+  // const resetPassword = async (email: string, newPassword: string) => {
+  //   const response = await authAxiosInstance.post('/auth/resetPassword', {
+  //     email,
+  //     newPassword,
+  //   });
+  //   return response.data;
+  // };
 
-  const handlePasswordReset = async (newPassword: string) => {
-    try {
-      const res = await resetPassword(forgetPasswordEmail, newPassword);
-      toast.success(res.message || 'Password reset successfully');
-      setIsPasswordResetModalOpen(false);
-      setForgetPasswordEmail('');
-    } catch (error) {
-      if (error instanceof AxiosError) {
-        toast.error(
-          error.response?.data?.message || 'Failed to reset password'
-        );
-      }
-    }
-  };
+  // const handlePasswordReset = async (newPassword: string) => {
+  //   try {
+  //     const res = await resetPassword(forgetPasswordEmail, newPassword);
+  //     toast.success(res.message || 'Password reset successfully');
+  //     setIsPasswordResetModalOpen(false);
+  //     setForgetPasswordEmail('');
+  //   } catch (error) {
+  //     if (error instanceof AxiosError) {
+  //       toast.error(
+  //         error.response?.data?.message || 'Failed to reset password'
+  //       );
+  //     }
+  //   }
+  // };
 
   return (
     <div
@@ -380,7 +380,7 @@ export default function AuthForm({
                   >
                     Forgot password?
                   </Button>
-                  <GoogleAuth role={activeRole} />
+                  {/* <GoogleAuth role={activeRole} /> */}
                 </CardFooter>
               </form>
             </Card>
@@ -512,7 +512,7 @@ export default function AuthForm({
                     >
                       Register
                     </Button>
-                    <GoogleAuth role={activeRole} />
+                    {/* <GoogleAuth role={activeRole} /> */}
                   </CardFooter>
                 </form>
               </Card>
@@ -539,8 +539,8 @@ export default function AuthForm({
             const verify = await verifyEmail(email);
             toast.success(verify.message);
 
-            const sendEmail = await sendOtpForgetPassword(email);
-            toast.success(sendEmail.message);
+            // const sendEmail = await sendOtpForgetPassword(email);
+            // toast.success(sendEmail.message);
 
             setIsOTPModalOpen(true);
             setIsEmailModalOpen(false);
@@ -559,12 +559,12 @@ export default function AuthForm({
         data={data}
         setIsOTPMpdalOpen={setIsOTPModalOpen}
       />
-      <PasswordResetModal
+      {/* <PasswordResetModal
         open={isPasswordResetModalOpen}
         onOpenChange={setIsPasswordResetModalOpen}
         onPasswordReset={handlePasswordReset}
         email={forgetPasswordEmail}
-      />
+      /> */}
       ;
     </div>
   );

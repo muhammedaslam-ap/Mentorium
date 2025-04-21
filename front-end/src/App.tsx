@@ -1,22 +1,49 @@
-import { useState } from 'react'
-import Login from './pages/login';
-import Signup from './pages/signup';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import AuthForm from './pages/authForm';
+import { NotFound } from './pages/404pageNotFound';
+import { UserHomePage } from './pages/student/home';
+
+import { Provider } from 'react-redux';
+import { store } from './redux/store';
+
+import { PublicUserRoute } from '@/private/user/publicUserRoute';
+import { ProtectedUserRoute } from '@/private/user/protectedUserroute';
+
 
 
 function App() {
-  const [isLogin, setIsLogin] = useState<boolean>(true);
-
   return (
     <>
-      <div>
-      {isLogin ? (
-        <Login onSwitchToSignup={() => setIsLogin(false)} />
-      ) : (
-        <Signup onSwitchToLogin={() => setIsLogin(true)} />
-      )}
-    </div>
+      <Provider store={store}>
+        <Router>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ProtectedUserRoute>
+                  <UserHomePage />
+                </ProtectedUserRoute>
+              }
+            />
+
+        
+
+          
+            <Route
+              path="/auth"
+              element={
+                <PublicUserRoute>
+                  <AuthForm />
+                </PublicUserRoute>
+              }
+            />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </Provider>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

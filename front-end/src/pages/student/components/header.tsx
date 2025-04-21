@@ -6,33 +6,39 @@ import { useDispatch } from "react-redux";
 import { removeUser } from "../../../redux/slice/userSlice";
 import { toast } from "sonner";
 import {
-  BookOpen,
-  Heart,
   LogoutOutlined,
   MenuOutlined,
   SearchOutlined,
   UserOutlined,
 } from "@ant-design/icons";
+import {BookOpen,Heart} from "lucide-react"
 import { Input, Button, Dropdown, Menu, Avatar, Space, Drawer } from "antd";
-import { profileService } from "@/services/userService/profileService";
-import { userAuthService } from "@/services/userService/authUser";
-import { Link } from "react-router-dom"; // Renamed to avoid confusion
+import { profileService } from "@/services/userServices/profileService";
+import { userAuthService } from "@/services/userServices/authServices";
+import { Link } from "react-router-dom";
 
+// Define interfaces for data structures
+interface User {
+  name: string;
+  email: string;
+}
+
+// Header Component
 const Header: React.FC = () => {
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   useEffect(() => {
     const fetchUserMe = async () => {
       try {
-        const response = await profileService.userDetails();
+        const response: { data: { users: User } } = await profileService.userDetails();
         setUser({
           name: response.data.users.name,
           email: response.data.users.email,
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Failed to fetch user:", error);
       }
     };
@@ -42,12 +48,12 @@ const Header: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await userAuthService.logoutUser();
+      const response: { data: { message: string } } = await userAuthService.logoutUser();
       toast.success(response.data.message);
       localStorage.removeItem("userData");
       dispatch(removeUser());
       navigate("/auth");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Logout failed:", error);
       toast.error("Failed to sign out");
     }
@@ -79,11 +85,11 @@ const Header: React.FC = () => {
 
   // Mobile Menu Items
   const mobileMenuItems = (
-    <div className="mobile-menu-content">
+    <div className="mobile-menu-content p-4">
       <Input
         placeholder="Search courses..."
         prefix={<SearchOutlined />}
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: 16, borderRadius: "8px" }}
       />
       <Menu mode="vertical" style={{ border: "none" }}>
         <Menu.Item key="home">
@@ -93,7 +99,7 @@ const Header: React.FC = () => {
           <Link to="/courses">Courses</Link>
         </Menu.Item>
         <Menu.Item key="paths">
-          <Link to="/paths">Paths</Link>
+          <Link to="/paths">Learning Paths</Link>
         </Menu.Item>
         <Menu.Item key="community">
           <Link to="/community">Community</Link>
@@ -106,7 +112,7 @@ const Header: React.FC = () => {
         <Button block>
           <Link to="/auth">Log in</Link>
         </Button>
-        <Button type="primary" block>
+        <Button type="primary" block style={{ backgroundColor: "#1890ff", borderColor: "#1890ff" }}>
           <Link to="/auth">Sign up</Link>
         </Button>
       </Space>
@@ -135,10 +141,13 @@ const Header: React.FC = () => {
             <Link to="/courses">Courses</Link>
           </Menu.Item>
           <Menu.Item key="paths">
-            <Link to="/paths">Paths</Link>
+            <Link to="/paths">Learning Paths</Link>
           </Menu.Item>
           <Menu.Item key="community">
             <Link to="/community">Community</Link>
+          </Menu.Item>
+          <Menu.Item key="about">
+            <Link to="/about">About</Link>
           </Menu.Item>
         </Menu>
 
@@ -148,27 +157,29 @@ const Header: React.FC = () => {
             placeholder="Search courses..."
             prefix={<SearchOutlined />}
             className="hidden md:block w-[200px] md:w-[250px] lg:w-[300px]"
+            style={{ borderRadius: "8px" }}
           />
 
-          {user ? (
+          {user !== null ? (
             <Dropdown overlay={menu} trigger={["click"]}>
               <Space className="cursor-pointer">
                 <Avatar
                   icon={<UserOutlined />}
                   src="/placeholder.svg?height=32&width=32&text=U"
+                  style={{ border: "2px solid #1890ff" }}
                 />
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="font-semibold">{user.name}</span>
+                  <span className="font-semibold text-blue-600">{user.name}</span>
                   <span className="text-xs text-gray-500">{user.email}</span>
                 </div>
               </Space>
             </Dropdown>
           ) : (
             <Space>
-              <Button>
+              <Button type="text">
                 <Link to="/auth">Log in</Link>
               </Button>
-              <Button type="primary">
+              <Button type="primary" style={{ backgroundColor: "#1890ff", borderColor: "#1890ff" }}>
                 <Link to="/auth">Sign up</Link>
               </Button>
             </Space>
@@ -196,6 +207,7 @@ const Header: React.FC = () => {
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
         width="80%"
+        bodyStyle={{ padding: 0 }}
       >
         {mobileMenuItems}
       </Drawer>
