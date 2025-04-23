@@ -1,216 +1,218 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { removeUser } from "../../../redux/slice/userSlice";
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+import { removeUser } from "@/redux/slice/userSlice";
 import { toast } from "sonner";
 import {
-  LogoutOutlined,
-  MenuOutlined,
-  SearchOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
-import {BookOpen,Heart} from "lucide-react"
-import { Input, Button, Dropdown, Menu, Avatar, Space, Drawer } from "antd";
-import { profileService } from "@/services/userServices/profileService";
+  BookOpen,
+  Heart,
+  LogOut,
+  Menu,
+  Search,
+  User,
+  X,
+} from "lucide-react";
 import { userAuthService } from "@/services/userServices/authServices";
-import { Link } from "react-router-dom";
 
-// Define interfaces for data structures
+// Types
 interface User {
   name: string;
   email: string;
 }
 
-// Header Component
 const Header: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.user.userDatas) as User | null;
 
-  useEffect(() => {
-    const fetchUserMe = async () => {
+    const handleLogout = async () => {
       try {
-        const response: { data: { users: User } } = await profileService.userDetails();
-        setUser({
-          name: response.data.users.name,
-          email: response.data.users.email,
-        });
-      } catch (error: unknown) {
-        console.error("Failed to fetch user:", error);
+        console.log("Calling logoutUser");
+        await userAuthService.logoutUser();
+        dispatch(removeUser());
+        localStorage.removeItem("userDatas");
+        toast.success("Logged out successfully");
+        navigate("/");
+      } catch (error) {
+        console.error("Logout error:", error);
+        toast.error("Failed to logout");
       }
     };
 
-    fetchUserMe();
-  }, []);
+  // Navigation Links
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/courses", label: "Courses" },
+    { to: "/paths", label: "Learning Paths" },
+    { to: "/community", label: "Community" },
+    { to: "/about", label: "About" },
+  ];
 
-  const handleLogout = async () => {
-    try {
-      const response: { data: { message: string } } = await userAuthService.logoutUser();
-      toast.success(response.data.message);
-      localStorage.removeItem("userData");
-      dispatch(removeUser());
-      navigate("/auth");
-    } catch (error: unknown) {
-      console.error("Logout failed:", error);
-      toast.error("Failed to sign out");
-    }
-  };
-
-  // Dropdown Menu for User Profile
-  const menu = (
-    <Menu>
-      <Menu.Item key="profile" onClick={() => navigate("/profile")}>
-        <Space>
-          <UserOutlined />
-          Profile
-        </Space>
-      </Menu.Item>
-      <Menu.Item key="wishlist" onClick={() => navigate("/wishlist")}>
-        <Space>
-          <Heart />
-          Wishlist
-        </Space>
-      </Menu.Item>
-      <Menu.Item key="logout" onClick={handleLogout}>
-        <Space>
-          <LogoutOutlined />
-          Sign out
-        </Space>
-      </Menu.Item>
-    </Menu>
-  );
-
-  // Mobile Menu Items
-  const mobileMenuItems = (
-    <div className="mobile-menu-content p-4">
-      <Input
-        placeholder="Search courses..."
-        prefix={<SearchOutlined />}
-        style={{ marginBottom: 16, borderRadius: "8px" }}
-      />
-      <Menu mode="vertical" style={{ border: "none" }}>
-        <Menu.Item key="home">
-          <Link to="/">Home</Link>
-        </Menu.Item>
-        <Menu.Item key="courses">
-          <Link to="/courses">Courses</Link>
-        </Menu.Item>
-        <Menu.Item key="paths">
-          <Link to="/paths">Learning Paths</Link>
-        </Menu.Item>
-        <Menu.Item key="community">
-          <Link to="/community">Community</Link>
-        </Menu.Item>
-        <Menu.Item key="about">
-          <Link to="/about">About</Link>
-        </Menu.Item>
-      </Menu>
-      <Space direction="vertical" style={{ width: "100%", marginTop: 16 }}>
-        <Button block>
-          <Link to="/auth">Log in</Link>
-        </Button>
-        <Button type="primary" block style={{ backgroundColor: "#1890ff", borderColor: "#1890ff" }}>
-          <Link to="/auth">Sign up</Link>
-        </Button>
-      </Space>
-    </div>
-  );
+  // Profile Dropdown Items
+  const profileMenuItems = [
+    { label: "Profile", icon: User, onClick: () => navigate("/profile") },
+    { label: "Wishlist", icon: Heart, onClick: () => navigate("/wishlist") },
+    { label: "Sign out", icon: LogOut, onClick: handleLogout },
+  ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="container mx-auto flex items-center justify-between h-16 px-4 md:px-6 lg:px-8">
         {/* Logo */}
-        <Space>
-          <BookOpen style={{ fontSize: 24, color: "#1890ff" }} />
-          <span className="text-xl font-bold text-blue-500">EduShare</span>
-        </Space>
+        <Link to="/" className="flex items-center gap-2">
+          <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Mentorium</span>
+        </Link>
 
         {/* Desktop Navigation */}
-        <Menu
-          mode="horizontal"
-          className="hidden md:flex md:gap-6 bg-transparent border-0"
-          style={{ lineHeight: "64px" }}
-        >
-          <Menu.Item key="home">
-            <Link to="/">Home</Link>
-          </Menu.Item>
-          <Menu.Item key="courses">
-            <Link to="/courses">Courses</Link>
-          </Menu.Item>
-          <Menu.Item key="paths">
-            <Link to="/paths">Learning Paths</Link>
-          </Menu.Item>
-          <Menu.Item key="community">
-            <Link to="/community">Community</Link>
-          </Menu.Item>
-          <Menu.Item key="about">
-            <Link to="/about">About</Link>
-          </Menu.Item>
-        </Menu>
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-300">
+          {navLinks.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
-        {/* Right Section */}
-        <Space size="middle">
-          <Input
-            placeholder="Search courses..."
-            prefix={<SearchOutlined />}
-            className="hidden md:block w-[200px] md:w-[250px] lg:w-[300px]"
-            style={{ borderRadius: "8px" }}
-          />
+        {/* Right Side */}
+        <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <div className="hidden md:block relative">
+            <input
+              type="text"
+              placeholder="Search courses..."
+              className="w-48 lg:w-64 pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </div>
 
-          {user !== null ? (
-            <Dropdown overlay={menu} trigger={["click"]}>
-              <Space className="cursor-pointer">
-                <Avatar
-                  icon={<UserOutlined />}
-                  src="/placeholder.svg?height=32&width=32&text=U"
-                  style={{ border: "2px solid #1890ff" }}
+          {/* User Actions */}
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <img
+                  src="/placeholder.svg"
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full border-2 border-blue-600 dark:border-blue-400"
                 />
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="font-semibold text-blue-600">{user.name}</span>
-                  <span className="text-xs text-gray-500">{user.email}</span>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{user.name}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
                 </div>
-              </Space>
-            </Dropdown>
+              </button>
+              {profileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg animate-fade-in">
+                  {profileMenuItems.map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        item.onClick();
+                        setProfileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2 w-full px-4 py-2 text-left text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
-            <Space>
-              <Button type="text">
-                <Link to="/auth">Log in</Link>
-              </Button>
-              <Button type="primary" style={{ backgroundColor: "#1890ff", borderColor: "#1890ff" }}>
-                <Link to="/auth">Sign up</Link>
-              </Button>
-            </Space>
+            <div className="hidden md:flex items-center gap-3">
+              <Link
+                to="/auth"
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-4 py-2 rounded-lg transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                to="/auth"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Sign up
+              </Link>
+            </div>
           )}
 
-          {/* Mobile Menu Button */}
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            className="md:hidden"
+          {/* Hamburger Icon for Mobile */}
+          <button
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             onClick={() => setMobileMenuOpen(true)}
-          />
-        </Space>
+          >
+            <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+          </button>
+        </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
-      <Drawer
-        title={
-          <Space>
-            <BookOpen style={{ fontSize: 24, color: "#1890ff" }} />
-            <span className="text-xl font-bold text-blue-500">EduShare</span>
-          </Space>
-        }
-        placement="right"
-        onClose={() => setMobileMenuOpen(false)}
-        open={mobileMenuOpen}
-        width="80%"
-        bodyStyle={{ padding: 0 }}
-      >
-        {mobileMenuItems}
-      </Drawer>
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-gray-900/50 dark:bg-gray-900/75 md:hidden animate-fade-in">
+          <div className="fixed right-0 top-0 h-full w-4/5 max-w-sm bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-300">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <span className="text-xl font-bold text-blue-600 dark:text-blue-400">Mentorium</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <X className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="relative mb-6">
+                <input
+                  type="text"
+                  placeholder="Search courses..."
+                  className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <nav className="flex flex-col gap-4 text-base text-gray-600 dark:text-gray-300">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="mt-6 flex flex-col gap-3">
+                <Link
+                  to="/auth"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-center"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/auth"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
+                >
+                  Sign up
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

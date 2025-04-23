@@ -16,7 +16,7 @@ export class OtpRoutes {
     );
 
     // Verify OTP
-    this.router.post("/verify", (req: Request, res: Response) =>
+    this.router.post("/verifyOtp", (req: Request, res: Response) =>
       injectedOtpController.verifyOtpToRegister(req, res)
     );
   }

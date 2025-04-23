@@ -7,4 +7,6 @@ export type TOtp = {
   export type TVerifyOtpToRegister = {
     otp: number;
     email: string;
+    role: string; // ✅ Add this line
+
 };

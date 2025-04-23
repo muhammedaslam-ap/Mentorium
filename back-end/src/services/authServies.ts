@@ -15,13 +15,26 @@ export class AuthService implements IAuthService {
 
   async registerUser(data: TUserRegister): Promise<void> {
     const alredyExisting = await this._userRepository.findByEmail(data.email);
+  
     if (alredyExisting) {
-      throw new CustomError(ERROR_MESSAGES.EMAIL_EXISTS, HTTP_STATUS.CONFLICT);
+      if (alredyExisting.role === data.role) {
+        throw new CustomError(
+          ERROR_MESSAGES.EMAIL_EXISTS,
+          HTTP_STATUS.CONFLICT
+        );
+      } else {
+        throw new CustomError(
+          `This email is already registered as a ${alredyExisting.role}. Please use a different email.`,
+          HTTP_STATUS.BAD_REQUEST
+        );
+      }
     }
+  
     let hashedPassword = "";
     if (data.password) {
       hashedPassword = await hashPassword(data.password);
     }
+  
     const newUser = {
       name: data.name,
       email: data.email,
@@ -30,25 +43,28 @@ export class AuthService implements IAuthService {
       isBlocked: false,
       isAccepted: data.role == "tutor" ? false : true,
     };
-
+  
     await this._userRepository.createUser(newUser);
   }
-
+  
   async loginUser(data: TUserLogin): Promise<TUserModel | null> {
     const userData = await this._userRepository.findByEmail(data.email);
+  
     if (!userData) {
       throw new CustomError(
         ERROR_MESSAGES.EMAIL_NOT_FOUND,
         HTTP_STATUS.UNAUTHORIZED
       );
     }
-    if (userData?.isBlocked) {
+  
+    if (userData.isBlocked) {
       throw new CustomError(
         ERROR_MESSAGES.ADMIN_BLOCKED,
         HTTP_STATUS.UNAUTHORIZED
       );
     }
-    if (userData && userData.password) {
+  
+    if (userData.password) {
       const valid = await comparePassword(data.password, userData.password);
       if (!valid) {
         throw new CustomError(
@@ -57,17 +73,17 @@ export class AuthService implements IAuthService {
         );
       }
     }
-    const validRole = data.role == userData.role;
-
-    if (!validRole) {
+  
+    if (userData.role !== data.role) {
       throw new CustomError(
-        ERROR_MESSAGES.INVALID_ROLE,
-        HTTP_STATUS.UNAUTHORIZED
+        `This email is registered as a ${userData.role}. Please log in from the ${userData.role} portal.`,
+        HTTP_STATUS.BAD_REQUEST
       );
     }
-
+  
     return userData;
   }
+  
 
  
   async verifyEmail(email: string): Promise<TUserModel | null> {

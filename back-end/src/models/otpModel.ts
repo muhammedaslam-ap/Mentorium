@@ -13,6 +13,12 @@ const otpSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  role: {
+    type: String,
+    required: true, 
+    enum: ["student", "tutor"],
+    
+  }
 });
 
 otpSchema.index({ expiredAt: 1 }, { expireAfterSeconds: 0 });
