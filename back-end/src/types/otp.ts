@@ -3,10 +3,10 @@ export type TOtp = {
     email: string;
     expiredAt: Date;
   };
+
   
+
   export type TVerifyOtpToRegister = {
     otp: number;
     email: string;
-    role: string; // ✅ Add this line
-
 };

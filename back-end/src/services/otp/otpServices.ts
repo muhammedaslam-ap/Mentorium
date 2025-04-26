@@ -18,10 +18,11 @@ export class OtpService implements IOtpService {
 
 async checkExistingUser(email: string): Promise<TUserModel | null> {
   const user = await this._userRepository.findByEmail(email);
+  console.log('nee sherikum indo ???:',user)
   if (user) {
-    return user; 
+    throw new CustomError(ERROR_MESSAGES.EMAIL_EXISTS, HTTP_STATUS.BAD_REQUEST);
   }
-  return user;
+  return user
 }
 
 
@@ -51,6 +52,8 @@ async checkExistingUser(email: string): Promise<TUserModel | null> {
     try {
       await transporter.sendMail(mailOptions);
     } catch (error) {
+      console.log(error);
+      
       console.error("Error sending email:", error);
       throw error;
     }

@@ -10,12 +10,10 @@ export class OtpRoutes {
   }
 
   initializeRoutes() {
-    // Send OTP
     this.router.post("/sendOtp", (req: Request, res: Response) =>
       injectedOtpController.otpGenerate(req, res)
     );
 
-    // Verify OTP
     this.router.post("/verifyOtp", (req: Request, res: Response) =>
       injectedOtpController.verifyOtpToRegister(req, res)
     );

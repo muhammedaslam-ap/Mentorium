@@ -10,6 +10,7 @@ import { authRoutes } from "./routes/authRoute";
 import { CustomError } from "./utils/custom.error";
 import morgan from "morgan";
 import { OtpRoutes } from "./routes/otpRoute";
+import { AdminRoutes } from "./routes/adminRoute";
 
 connectDB();
 const app = express();
@@ -19,7 +20,7 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "OPTIONS","PATCH","PUT","DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 204, 
   })
@@ -32,6 +33,8 @@ app.use(morgan("dev"));
 try {
   app.use("/auth", new authRoutes().router);
   app.use("/otp", new OtpRoutes().router);
+  app.use("/admin",new AdminRoutes().router);
+
 } catch (error) {
   console.error("Error initializing routes:", error);
   process.exit(1); 

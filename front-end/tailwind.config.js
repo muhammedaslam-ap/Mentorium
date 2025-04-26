@@ -1,50 +1,56 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+// tailwind.config.ts
+
+import { type Config } from "tailwindcss"; // Use type syntax here for TypeScript
+import type { Config as TailwindConfig } from "tailwindcss"; // Optional for better clarity
+
+const config: Config = {
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}", // Include all JS/TS files in src
-    "./components/**/*.{js,jsx,ts,tsx}", // Include components directory
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        teal: {
-          50: "#f0fdfa",
-          500: "#14b8a6",
-          950: "#042f2e",
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
-        violet: {
-          50: "#f5f3ff",
-          500: "#8b5cf6",
-          950: "#2e1065",
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
-        red: {
-          50: "#fef2f2",
-          500: "#ef4444",
-          600: "#dc2626",
-          950: "#450a0a",
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
       },
     },
   },
   plugins: [],
-  darkMode: "class", // Enable dark mode for dark:* classes
 }
 
-module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        teal: { 50: "#f0fdfa", 500: "#14b8a6", 950: "#042f2e" },
-        violet: { 50: "#f5f3ff", 500: "#8b5cf6", 950: "#2e1065" },
-        red: { 50: "#fef2f2", 500: "#ef4444", 600: "#dc2626", 950: "#450a0a" },
-      },
-      animation: {
-        "fade-in": "animate__fadeIn 0.5s ease-out",
-      },
-    },
-  },
-  plugins: [],
-  darkMode: "class",
-};
-
+export default config;

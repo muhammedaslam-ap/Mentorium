@@ -6,6 +6,14 @@ import { CustomError } from "../../utils/custom.error";
 
 export class GoogleService implements IGoogleService {
     constructor(private _userRepository: IUserRepository) {}
+    async findByEmail(email: string): Promise<TUserModel | null> {
+      const user = await this._userRepository.findByEmail(email);
+      if (!user) {
+          return null;  
+      }
+      return user;
+  }
+
   
     async createUser(data: {
       name: string;

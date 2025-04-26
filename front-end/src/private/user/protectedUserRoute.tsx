@@ -16,3 +16,14 @@ export function ProtectedUserRoute({ children }: ProtectedUserRouteProps) {
 
   return children;
 }
+
+
+export function ProtectedAdminRoute({ children }: ProtectedUserRouteProps) {
+  const user = useSelector((state: RootState) => state.admin.adminDatas);
+
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
+
+return children;
+}

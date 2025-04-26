@@ -1,5 +1,7 @@
 import { Types } from "mongoose";
 
+import { TPaginatedResult } from "./common";
+
 export type TTutorModel = {
     name: string;
     email: string;
@@ -15,9 +17,4 @@ export type TTutorModel = {
     bio: string;
     rejectionReason?: string;
   };
-export type TPaginatedResult = {
-    users: TTutorModel[];
-    total: number;
-    page: number;
-    limit: number;
-  };
+  export type TTutorPaginatedResult = TPaginatedResult<TTutorModel>;

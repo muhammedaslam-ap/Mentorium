@@ -12,7 +12,7 @@ interface OTPModalProps {
   isOpen: boolean;
   onClose: () => void;
   onVerify: (otp: string) => void;
-  role?: "admin" | "user" | "tutor";
+  role?: "admin" | "student" | "tutor";
   data: RegisterFormData;
 }
 
@@ -20,7 +20,7 @@ const OTPModal: React.FC<OTPModalProps> = ({
   isOpen,
   onClose,
   onVerify,
-  role = "user",
+  role = "student",
   data,
 }) => {
   const [otp, setOtp] = useState<string>("");
@@ -34,7 +34,7 @@ const OTPModal: React.FC<OTPModalProps> = ({
         return "#ff4d4f"; // Red
       case "tutor":
         return "#722ed1"; // Purple
-      case "user":
+      case "student":
       default:
         return "#1890ff"; // Blue (Ant Design primary)
     }

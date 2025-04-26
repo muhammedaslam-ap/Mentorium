@@ -10,6 +10,9 @@ import { CustomError } from "../utils/custom.error";
 import { ITokenService } from "../interfaces/jwtTokenInterface";
 import { CustomRequest } from "../middlewares/userAuthMiddleware";
 import { setAuthCookies } from "../utils/cookieHelper";
+import { hashPassword } from "../utils/bcrypt";
+import { TUpdatePassword } from "../types/user";
+import { ResetPasswordDTO } from "../validation/passwordValidation";
 
 export class AuthController {
   constructor(
@@ -113,6 +116,50 @@ export class AuthController {
     }
   }
 
+    async forgotPassword(req: Request, res: Response) {
+      try {
+        const { email } = req.body;
+        await this._authService.forgotPassword(email);
+        res.status(HTTP_STATUS.OK).json({ message: "OTP sent successfully" });
+      } catch (error: any) {
+        console.log(error);
+        
+        res.status(error.status || 500).json({ message: error.message });
+      }
+    }
+  
+    async verifyOtp(req: Request, res: Response) {
+      try {
+        const { email, otp } = req.body;
+        const isValid = await this._authService.verifyResetOtp({
+          email,
+          otp: Number(otp), 
+        });
+  
+        if (!isValid) {
+          return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Invalid or expired OTP" });
+        }
+  
+        res.status(HTTP_STATUS.OK).json({ message: "OTP verified successfully" });
+      } catch (error: any) {
+        res.status(error.status || 500).json({ message: error.message });
+      }
+    }
+  
+    async resetPassword(req: Request, res: Response) {
+      try {
+        const data: ResetPasswordDTO = req.body; 
+        const updated = await this._authService.resetPassword(data);
+  
+        if (!updated) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: "Failed to reset password" });
+        }
+  
+        res.status(HTTP_STATUS.OK).json({ message: "Password reset successfully" });
+      } catch (error: any) {
+        res.status(error.status || 500).json({ message: error.message });
+      }
+    }
 
   
 }

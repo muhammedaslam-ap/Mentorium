@@ -15,9 +15,8 @@ const otpSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    required: true, 
     enum: ["student", "tutor"],
-    
+
   }
 });
 

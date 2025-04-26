@@ -15,5 +15,7 @@
       "@/*": ["*"]                     // <--- Enables "@/services/..." to work
     }
   },
-  "include": ["src"]
+  "include": ["src",   
+   "tailwind.config.ts"
+]
 }

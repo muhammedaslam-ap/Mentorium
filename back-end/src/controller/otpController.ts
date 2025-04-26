@@ -15,27 +15,15 @@ export class OtpController {
     try {
       const data: TOtp = req.body;
   
-      const existingUser = await this._otpService.checkExistingUser(data.email);
+      await this._otpService.checkExistingUser(data.email); 
   
-      if (existingUser) {
-          throw new CustomError(
-            "This email is already registered. Please login instead.",
-            HTTP_STATUS.CONFLICT
-          )
-        } else {
-          throw new CustomError(
-            `This email is already registered as a . Please use the ${existingUser} portal.`,
-            HTTP_STATUS.BAD_REQUEST
-          );
-        }
-      
-  
-      await this._otpService.otpGenerate(data);
+      await this._otpService.otpGenerate(data); 
   
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
         message: SUCCESS_MESSAGES.OTP_SEND_SUCCESS,
       });
+  
     } catch (error) {
       if (error instanceof CustomError) {
         res.status(error.statusCode).json({
@@ -53,6 +41,7 @@ export class OtpController {
       });
     }
   }
+  
   
   async verifyOtpToRegister(req: Request, res: Response) {
     try {

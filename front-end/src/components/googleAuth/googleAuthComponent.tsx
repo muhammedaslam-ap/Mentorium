@@ -12,6 +12,7 @@ interface GoogleAuthProps {
 
 export const GoogleAuth = ({ role }: GoogleAuthProps) => {
   const clientId = import.meta.env.VITE_GOOGLE_AUTH_CLIENT_ID;
+  console.log(clientId)
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
