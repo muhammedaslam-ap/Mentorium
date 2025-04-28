@@ -3,7 +3,7 @@ import { TUpdatePassword, TUserLogin, TUserModel, TUserRegister } from "../../ty
 
 export interface IAuthService {
   registerUser(data: TUserRegister): Promise<void>;
-  loginUser(data: TUserLogin): Promise<TUserModel | null>;
+  loginUser(data: TUserLogin): Promise<{ user: TUserModel; accessToken: string; refreshToken: string; }>  
   verifyPassword(id: string, password: string): Promise<boolean>;
 
   forgotPassword(email: string): Promise<void>;

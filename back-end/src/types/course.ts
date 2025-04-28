@@ -16,6 +16,21 @@ export type TCourseAdd = {
   _id?: Types.ObjectId; // Optional MongoDB ID
 };
 
+
+// types/course.ts
+
+export type TCourseResponse = {
+  _id: string;
+  title: string;
+  tagline: string;
+  category: string;
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
+  price: number;
+  about: string;
+  thumbnail: string;
+  tutorId: string;
+};
+
 export type TLessonAdd = {
   title:string;
   courseId:string;

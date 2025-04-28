@@ -1,6 +1,6 @@
-
 import { authAxiosInstance } from "@/api/authAxiosInstance";
-import { addUser } from "@/redux/slice/userSlice";
+import { addStudent } from "@/redux/slice/userSlice";
+import { addTutor } from "@/redux/slice/tutorSlice";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +12,6 @@ interface GoogleAuthProps {
 
 export const GoogleAuth = ({ role }: GoogleAuthProps) => {
   const clientId = import.meta.env.VITE_GOOGLE_AUTH_CLIENT_ID;
-  console.log(clientId)
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -24,20 +23,24 @@ export const GoogleAuth = ({ role }: GoogleAuthProps) => {
             .post("/auth/google-auth", { credentialResponse, role })
             .then((response) => {
               const user = response.data.userData;
-              dispatch(addUser(user));
-              toast.success(response.data.message);
+
+              // Dispatch according to role
               if (role === "tutor") {
+                dispatch(addTutor(user));
                 navigate("/tutor/home");
               } else {
+                dispatch(addStudent(user));
                 navigate("/");
               }
+
+              toast.success(response.data.message);
             })
             .catch((error) => {
-              toast.error(error.response?.data?.message || "Google login failed"); 
+              toast.error(error.response?.data?.message || "Google login failed");
             });
         }}
         onError={() => {
-          toast.error("Google login failed"); 
+          toast.error("Google login failed");
         }}
         theme="outline"
         size="large"

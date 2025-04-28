@@ -12,8 +12,13 @@ export function PublicUserRoute({ children }: PublicUserRouteProps) {
     return state?.user?.userDatas;
   });
 
-  if (userData?.role === 'tutor') {
-    return <Navigate to={`/${userData.role}/home`} />;
+
+  const tutorData = useSelector((state: RootState) => {
+    return state?.tutor?.tutorDatas;
+  });
+
+  if (tutorData) {
+    return <Navigate to={`/${tutorData.role}/home`} />;
   } else if (userData?.role === 'user') {
     return <Navigate to={'/'} />;
   }

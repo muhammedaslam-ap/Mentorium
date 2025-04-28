@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
-
+import {v2 as cloudinary }from "cloudinary"
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -11,9 +11,18 @@ import { CustomError } from "./utils/custom.error";
 import morgan from "morgan";
 import { OtpRoutes } from "./routes/otpRoute";
 import { AdminRoutes } from "./routes/adminRoute";
+import { CourseRoutes } from "./routes/courseRoute";
 
 connectDB();
 const app = express();
+
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 
 // ✅ CORS Configuration
 app.use(
@@ -34,6 +43,8 @@ try {
   app.use("/auth", new authRoutes().router);
   app.use("/otp", new OtpRoutes().router);
   app.use("/admin",new AdminRoutes().router);
+  app.use("/courses",new CourseRoutes().router);
+     
 
 } catch (error) {
   console.error("Error initializing routes:", error);

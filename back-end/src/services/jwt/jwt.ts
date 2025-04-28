@@ -19,7 +19,7 @@ export class JwtService implements ITokenService {
     role: string;
   }): string {
     return jwt.sign(
-      { userId: payload.id, email: payload.email, role: payload.role },
+      payload,
       this._accessSecret,
       {
         expiresIn: this._accessExpiresIn as ms.StringValue,

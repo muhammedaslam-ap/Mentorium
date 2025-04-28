@@ -55,24 +55,9 @@ export class AuthController {
   async loginUser(req: Request, res: Response) {
     try {
       const data = req.body;
-
-      const user = await this._authService.loginUser(data);
-
-      if (!user || !user._id || !user.email || !user.role) {
-        throw new Error("User data is missing or incomplete");
-      }
-
-      const accessToken = this._jwtService.generateAccessToken({
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role,
-      });
-      const refreshToken = this._jwtService.generateRefreshToken({
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role,
-      });
-
+  
+      const { user, accessToken, refreshToken } = await this._authService.loginUser(data);
+  
       setAuthCookies(
         res,
         accessToken,
@@ -80,10 +65,10 @@ export class AuthController {
         `${data.role}AccessToken`,
         `${data.role}RefreshToken`
       );
-
+  
       res.status(HTTP_STATUS.OK).json({
         message: SUCCESS_MESSAGES.LOGIN_SUCCESS,
-        user: { id: user?._id, username: user?.name, role :user?.role },
+        user: { id: user._id, username: user.name, role: user.role },
       });
     } catch (error) {
       if (error instanceof CustomError) {
@@ -96,6 +81,7 @@ export class AuthController {
         .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
+  
 
   async logoutUser(req: Request, res: Response) {
     try {

@@ -21,7 +21,8 @@ import { sendOtp } from "@/services/otpServices/otpServices";
 import { verifyEmail } from "@/services/userServices/verifyEmail";
 import { forgot_password_verify_Otp } from "@/services/otpServices/verifyOtp";
 import { userAuthService } from "@/services/userServices/authServices";
-import { addUser } from "@/redux/slice/userSlice";
+import { addStudent } from "@/redux/slice/userSlice";
+import { addTutor } from "@/redux/slice/tutorSlice";
 import { loginSchema, registerSchema, type LoginFormData, type RegisterFormData } from "@/validation";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GoogleAuth } from "@/components/googleAuth/googleAuthComponent";
@@ -99,25 +100,35 @@ export default function AuthForm({
       }
     }, []);
 
-  const handleLoginSubmit = (data: LoginFormData) => {
-    const backendRole = getBackendRole(activeRole);
-    authAxiosInstance
-      .post("/auth/login", { ...data, role: backendRole })
-      .then((response) => {
-        let { user } = response.data;
-        user = { ...user, role: activeRole }; // Keep frontend role for state
-        dispatch(addUser(user));
-        toast.success(response.data.message);
-        loginForm.reset();
-        if (activeRole === "tutor") {
-          navigate(`/${activeRole}/home`);
-        } else {
-          navigate("/");
-        }
-      })
-      .catch((error) => toast.error(error.response?.data?.error ?? error.response?.data?.message));
-  };
+    const handleLoginSubmit = (data: LoginFormData) => {
+      const backendRole = getBackendRole(activeRole);
+    
+      const endpoint = activeRole === "tutor" ? "/auth/tutor/login" : "/auth/user/login";
+      console.log(endpoint)
 
+      authAxiosInstance
+        .post(endpoint, { ...data, role: backendRole }) 
+        .then((response) => {
+          let { user } = response.data;
+          user = { ...user, role: activeRole };
+    
+          if (activeRole === "tutor") {
+            dispatch(addTutor(user));
+            navigate("/tutor/home");
+          } else {
+            dispatch(addStudent(user));
+            navigate("/");
+          }
+    
+          toast.success(response.data.message);
+          loginForm.reset();
+        })
+        .catch((error) =>
+          toast.error(error.response?.data?.message)
+        );
+    };
+    
+    
   const handleRegisterSubmit = async (data: RegisterFormData) => {
     try {
       const res = await sendOtp(data);
@@ -369,7 +380,7 @@ export default function AuthForm({
               </Card>
             </TabsContent>
 
-            {/* Register Form **/}
+            {/* Register Form */}
             {showRegistration && activeRole !== "admin" && (
               <TabsContent value="register">
                 <Card className={cn("border-t-4 shadow-md transition-all", roleConfig.borderColor)}>

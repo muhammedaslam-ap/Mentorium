@@ -15,7 +15,7 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import { Badge } from "@/components/ui/badge";
-import { removeUser } from "@/redux/slice/userSlice"
+import { removeTutor } from "@/redux/slice/tutorSlice"
 import { toast } from "sonner"
 import { tutorService } from "@/services/tutorServices/tutorService"
 
@@ -29,17 +29,17 @@ export function Header() {
   const [isAccepted, setIsAccepted] = useState<boolean | null>(null)
 
   useEffect(() => {
-    async function fetchUser() {
-      try {
-        const response = await tutorService.tutorDetails()
-        setUser({ name: response?.data.tutor.name, email: response?.data.tutor.email })
-        setIsAccepted(response?.data.tutor.isAccepted)
-      } catch (error) {
-        console.error("Failed to fetch user details:", error)
-        toast.error("Failed to load user data")
-      }
-    }
-    fetchUser()
+    // async function fetchUser() {
+    //   try {
+    //     const response = await tutorService.tutorDetails()
+    //     setUser({ name: response?.data.tutor.name, email: response?.data.tutor.email })
+    //     setIsAccepted(response?.data.tutor.isAccepted)
+    //   } catch (error) {
+    //     console.error("Failed to fetch user details:", error)
+    //     toast.error("Failed to load user data")
+    //   }
+    // }
+    // fetchUser()
   }, [])
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export function Header() {
     const response = await tutorService.logoutTutor()
     toast.success(response?.data.message)
     localStorage.removeItem("userData")
-    dispatch(removeUser())
+    dispatch(removeTutor())
     navigate("/auth")
   }
 

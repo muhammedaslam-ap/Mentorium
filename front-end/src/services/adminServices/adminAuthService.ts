@@ -4,10 +4,11 @@ import { LoginFormData } from "@/validation";
 export const adminService = {
   async loginAdmin(data: LoginFormData) {
     try {
-      const response = await authAdminAxiosInstance.post("/auth/login", {
+      const response = await authAdminAxiosInstance.post("/auth/admin/login", {
         ...data,
         role: "admin",
       });
+      console.log(response)
 
       return response;
     } catch (error) {

@@ -20,7 +20,15 @@ export class authRoutes{
             injectedAuthController.registerUser(req, res)
     );
 
-    this.router.post("/login", (req: Request, res: Response) =>
+    this.router.post("/user/login", (req: Request, res: Response) =>
+        injectedAuthController.loginUser(req, res)
+     );
+
+     this.router.post("/admin/login", (req: Request, res: Response) =>
+        injectedAuthController.loginUser(req, res)
+     );
+
+     this.router.post("/tutor/login", (req: Request, res: Response) =>
         injectedAuthController.loginUser(req, res)
      );
 

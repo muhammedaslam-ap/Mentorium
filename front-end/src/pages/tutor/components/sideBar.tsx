@@ -17,19 +17,20 @@ export function Sidebar({ sidebarOpen } : {sidebarOpen : boolean}) {
   const [loading, setLoading] = useState(true)
 
   const fetchTutorProfile = async () => {
-    try {
-      const response = await tutorService.tutorDetails()
-      setIsAccepted(response.data.tutor.isAccepted)
-      setLoading(false)
-    } catch (error) {
-      console.error("Failed to fetch tutor profile:", error)
-      toast.error("Failed to load profile data")
-      setLoading(false)
-    }
+    // try {
+    //   const response = await tutorService.tutorDetails()
+    //   setIsAccepted(response.data.tutor.isAccepted)
+    //   setLoading(false)
+    // } catch (error) {
+    //   console.error("Failed to fetch tutor profile:", error)
+    //   toast.error("Failed to load profile data")
+    //   setLoading(false)
+    // }
   }
 
   useEffect(() => {
-    fetchTutorProfile()
+    // fetchTutorProfile()
+    setLoading(false)
   }, [])
 
   const navItems = [

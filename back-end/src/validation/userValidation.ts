@@ -18,7 +18,7 @@ export const registerSchema = z.object({
   isBlocked: z.boolean().optional().default(false),
   isAccepted: z.boolean().optional().default(false),
 });
-
+ 
 export const withoutRoleRegisterSchema = registerSchema.omit({ role: true });
 
 // Type definitions

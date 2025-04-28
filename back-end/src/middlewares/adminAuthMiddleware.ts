@@ -23,6 +23,7 @@ export const adminAuthMiddleware = async (
 ) => {
   try {
     const token = req.cookies.adminAccessToken;
+    console.log("---------------------",req.cookies.adminAccessToken)
 
     if (!token) {
       console.log("no token");
@@ -33,7 +34,7 @@ export const adminAuthMiddleware = async (
     }
 
     const user =  tokenService.verifyAccessToken(token) as CustomJwtPayload;
-    if (!user || !user.userId) {
+    if (!user || !user.id) {
 
       res
         .status(HTTP_STATUS.UNAUTHORIZED)
@@ -80,7 +81,7 @@ export const decodeToken = async (
     const user = tokenService.decodeAccessToken(token?.access_token);
     console.log("decoded", user);
     (req as CustomRequest).user = {
-      id: user?.userId,
+      id: user?.id,
       email: user?.email,
       role: user?.role,
       access_token: token.access_token,

@@ -1,3 +1,4 @@
+import { ITokenService } from "../interfaces/jwtTokenInterface";
 import { IOtpRepository } from "../interfaces/repositoryInterface/IotpRepository";
 import { IUserRepository } from "../interfaces/repositoryInterface/IuserRepository";
 import { IAuthService } from "../interfaces/serviceInterface/IauthServices";
@@ -16,7 +17,8 @@ import { OtpService } from "./otp/otpServices";
 export class AuthService implements IAuthService {
   constructor(
     private _userRepository: IUserRepository,
-    private _otpService: OtpService
+    private _otpService: OtpService,
+    private _jwtService:ITokenService
   ) {}
 
   async registerUser(data: TUserRegister): Promise<void> {
@@ -49,33 +51,50 @@ export class AuthService implements IAuthService {
     await this._userRepository.createUser(newUser);
   }
 
-  async loginUser(data: TUserLogin): Promise<TUserModel | null> {
+  async loginUser(data: TUserLogin): Promise<{ user: TUserModel, accessToken: string, refreshToken: string }> {
     const user = await this._userRepository.findByEmail(data.email);
-
+  
     if (!user) {
       throw new CustomError(ERROR_MESSAGES.EMAIL_NOT_FOUND, HTTP_STATUS.UNAUTHORIZED);
     }
-
+  
     if (user.isBlocked) {
-      throw new CustomError(ERROR_MESSAGES.ADMIN_BLOCKED, HTTP_STATUS.UNAUTHORIZED);
+      throw new CustomError(ERROR_MESSAGES.ADMIN_BLOCKED, HTTP_STATUS.UNAUTHORIZED);      
     }
-
+  
     if (user.password) {
       const isMatch = await comparePassword(data.password, user.password);
       if (!isMatch) {
         throw new CustomError(ERROR_MESSAGES.INVALID_PASSWORD, HTTP_STATUS.UNAUTHORIZED);
       }
     }
-
+  
     if (user.role !== data.role) {
       throw new CustomError(
         `This email is registered as a ${user.role}. Please log in from the ${user.role} portal.`,
         HTTP_STATUS.BAD_REQUEST
       );
     }
+  
+    const accessToken = this._jwtService.generateAccessToken({
+      id: user._id!.toString(),
+      email: user.email,
+      role: user.role,
+    });
 
-    return user;
+    console.log('accessToken->>>>>>>>>>',accessToken)
+  
+    const refreshToken = this._jwtService.generateRefreshToken({
+      id: user._id!.toString(),
+      email: user.email,
+      role: user.role,
+    });
+  
+    console.log('refreshToken->>>>>>>>>>',refreshToken)
+
+    return { user, accessToken, refreshToken };
   }
+  
 
   async verifyPassword(id: string, password: string): Promise<boolean> {
     const user = await this._userRepository.findById(id);
