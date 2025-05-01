@@ -182,7 +182,7 @@ export function TutorHome() {
                         <Progress
                           value={section.completion}
                           className="h-2 bg-violet-100"
-                          indicatorClassName="bg-gradient-to-r from-violet-500 to-purple-600"
+                          indicatorClassName ="bg-gradient-to-r from-violet-500 to-purple-600"
                         />
                         {index < 2 && <Separator className="my-4 bg-violet-100" />}
                       </div>

@@ -1,30 +1,36 @@
+// src/repositories/user.repository.ts
+import { Types } from "mongoose";
+import { BaseRepository } from "./baseRepository";
 import { userModel } from "../models/userModel";
+import { tutorProfileModel } from "../models/tutorProfileModel";
 import {
+  TUserRegister,
+  TUserDocument,
+  TUserWithProfile,
   TPaginationOptions,
   TUpdatePassword,
-  TUserModel,
-  TUserRegister,
-  TUserWithProfile,
+  TUserPaginatedResult,
 } from "../types/user";
 import { IUserRepository } from "../interfaces/repositoryInterface/IuserRepository";
 
-import { Types } from "mongoose";
-import { tutorProfileModel } from "../models/tutorProfileModel";
-import { TUserPaginatedResult } from "../types/user";
-
-export class UserRepository implements IUserRepository {
-  async createUser(data: TUserRegister): Promise<TUserModel> {
-    const userData = await userModel.create(data);
-    return userData;
+export class UserRepository
+  extends BaseRepository<TUserDocument, TUserRegister>
+  implements IUserRepository
+{
+  constructor() {
+    super(userModel);
   }
 
-  async findByEmail(email: string): Promise<TUserModel | null> {
-    console.log(email)
-    return await userModel.findOne({ email });
+  async createUser(data: TUserRegister): Promise<TUserDocument> {
+    return await this.create(data);
+  }
+
+  async findByEmail(email: string): Promise<TUserDocument | null> {
+    return await this.model.findOne({ email });
   }
 
   async resetPassword(data: TUpdatePassword): Promise<boolean> {
-    const updated = await userModel.findOneAndUpdate(
+    const updated = await this.model.findOneAndUpdate(
       { email: data.email },
       { password: data.newPassword },
       { new: true }
@@ -33,7 +39,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<boolean> {
-    const updated = await userModel.findByIdAndUpdate(
+    const updated = await this.model.findByIdAndUpdate(
       id,
       { password: newPassword },
       { new: true }
@@ -41,10 +47,10 @@ export class UserRepository implements IUserRepository {
     return !!updated;
   }
 
-  async findById(id: string): Promise<TUserWithProfile | null> {
+  async findByIdWithProfile(id: string): Promise<TUserWithProfile | null> {
     if (!Types.ObjectId.isValid(id)) return null;
 
-    const user = await userModel
+    const user = await this.model
       .aggregate([
         { $match: { _id: new Types.ObjectId(id) } },
         {
@@ -55,12 +61,7 @@ export class UserRepository implements IUserRepository {
             as: "userProfile",
           },
         },
-        {
-          $unwind: {
-            path: "$userProfile",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+        { $unwind: { path: "$userProfile", preserveNullAndEmptyArrays: true } },
         {
           $project: {
             _id: 1,
@@ -82,7 +83,6 @@ export class UserRepository implements IUserRepository {
 
     const userData = user[0];
     return {
-      _id: userData._id,
       name: userData.name,
       email: userData.email,
       password: userData.password || null,
@@ -96,19 +96,16 @@ export class UserRepository implements IUserRepository {
   }
 
   async acceptTutor(tutorId: string): Promise<void> {
-    await userModel.findByIdAndUpdate({ _id: tutorId }, { isAccepted: true });
+    await this.model.findByIdAndUpdate(tutorId, { isAccepted: true });
     await tutorProfileModel.updateOne(
-      { tutorId: tutorId },
+      { tutorId },
       { approvalStatus: "approved" }
     );
-
   }
 
-  
   async updateStatus(id: string, status: boolean): Promise<void> {
-    await userModel.findByIdAndUpdate({ _id: id }, { isBlocked: status });
+    await this.model.findByIdAndUpdate(id, { isBlocked: status });
   }
-
 
   async getUsers({
     page,
@@ -126,7 +123,7 @@ export class UserRepository implements IUserRepository {
     }
 
     const skip = (page - 1) * pageSize;
-    const users = await userModel
+    const users = await this.model
       .aggregate([
         { $match: query },
         {
@@ -147,6 +144,7 @@ export class UserRepository implements IUserRepository {
             email: 1,
             role: 1,
             isBlocked: 1,
+            isAccepted: 1,
             lastActive: 1,
             "tutorProfile.specialization": 1,
             "tutorProfile.verificationDocUrl": 1,
@@ -160,7 +158,7 @@ export class UserRepository implements IUserRepository {
       ])
       .exec();
 
-    const total = await userModel.countDocuments(query);
+    const total = await this.model.countDocuments(query);
     const totalPages = Math.ceil(total / pageSize);
 
     const flattenedUsers = users.map((user) => ({
@@ -169,6 +167,7 @@ export class UserRepository implements IUserRepository {
       email: user.email,
       role: user.role,
       isBlocked: user.isBlocked || false,
+      isAccepted: user.isAccepted || false,
       specialization: user.tutorProfile?.specialization || "",
       verificationDocUrl: user.tutorProfile?.verificationDocUrl || "",
       approvalStatus: user.tutorProfile?.approvalStatus || "pending",
@@ -176,6 +175,6 @@ export class UserRepository implements IUserRepository {
       bio: user.tutorProfile?.bio || "",
     }));
 
-    return { data: flattenedUsers, total, page, pageSize,totalPages };
+    return { data: flattenedUsers, total, page, pageSize, totalPages };
   }
 }

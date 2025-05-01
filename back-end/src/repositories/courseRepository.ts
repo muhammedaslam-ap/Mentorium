@@ -21,7 +21,7 @@ export class CourseRepository implements ICourseRepository {
           }
       
           const formattedCourse: TCourseResponse = {
-            _id: course._id.toString(),           // 👈 Convert ObjectId to string
+            _id: course._id.toString(),          
             title: course.title,
             tagline: course.tagline,
             category: course.category,
@@ -29,7 +29,7 @@ export class CourseRepository implements ICourseRepository {
             price: course.price,
             about: course.about,
             thumbnail: course.thumbnail,
-            tutorId: course.tutorId.toString(),    // 👈 Convert ObjectId to string
+            tutorId: course.tutorId.toString(),    
           };
       
           return formattedCourse;
@@ -41,6 +41,7 @@ export class CourseRepository implements ICourseRepository {
         thumbnail: string,
         tutorId: string
     ): Promise<void> {
+      
         await courseModel.create({
         title: data.title,
         tagline: data.tagline,

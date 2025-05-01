@@ -244,18 +244,7 @@ const TutorCourses: React.FC = () => {
                   Search
                 </Button>
               </form>
-              <Space>
-                <Dropdown overlay={filterMenu}>
-                  <Button icon={<FilterOutlined />}>Filter</Button>
-                </Dropdown>
-                <Dropdown overlay={sortMenu}>
-                  <Button icon={<SortAscendingOutlined />}>
-                    Sort: {sortOption.key === 'createdAt' ? (sortOption.order === 'desc' ? 'Newest' : 'Oldest') :
-                           sortOption.key === 'price' ? (sortOption.order === 'asc' ? 'Price Low' : 'Price High') :
-                           'Enrollments'}
-                  </Button>
-                </Dropdown>
-              </Space>
+   
             </div>
 
             {loading ? (

@@ -17,7 +17,6 @@ export class CourseController {
     try {
       const tutor = req.user;
       let publicId: string = "";
-       console.log("custom request",req.user)
       if (req.file) {
         const timestamp = Math.round(new Date().getTime() / 1000);
         const signature = cloudinary.utils.api_sign_request(
@@ -52,7 +51,6 @@ export class CourseController {
         publicId = (uploadResult as UploadApiResponse).public_id;
         console.log("Uploaded Secure Image Public ID:", publicId);
       }
-
       await this._courseService.addCourse(req.body, publicId, tutor?.id);
       res.status(201).json({
         success: true,
@@ -99,7 +97,7 @@ export class CourseController {
       console.log('here is the tutor id in service', tutor.id)
   
       const { courses, totalCourses } = await this._courseService.getTutorCourses(tutor.id, page, limit);
-      console.log("herererererer3rererererer",courses,totalCourses)
+      // console.log("herererererer3rererererer",courses,totalCourses)
   
       const updatedCourses = courses
         ? await Promise.all(

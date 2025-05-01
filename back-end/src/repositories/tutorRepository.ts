@@ -1,15 +1,45 @@
 import { Types } from "mongoose";
 import { ITutorRepository } from "../interfaces/repositoryInterface/ItutorRepository";
-import { tutorProfileModel } from "../models/tutorProfileModel";
+import { ITutorProfile, tutorProfileModel } from "../models/tutorProfileModel";
 import { userModel } from "../models/userModel";
-import {
-  TTutorModel,
-
-} from "../types/tutor";
-
+import { TTutorModel, TTutorProfileInput } from "../types/tutor";
 
 export class TutorRepository implements ITutorRepository {
- 
+  async createTutorProfile(
+    tutorId: string,
+    profileData: TTutorProfileInput,
+    verificationDocUrl?: string
+  ): Promise<void> {
+    const existingProfile = await tutorProfileModel.findOne({ tutorId });
+
+    if (existingProfile) {
+      throw new Error("Tutor profile already exists.");
+    }
+
+    const newProfile = {
+      tutorId,
+      name:profileData.name,
+      specialization: profileData.specialization,
+      verificationDocUrl: verificationDocUrl || '',
+      phone: profileData.phone,
+      bio: profileData.bio,
+      approvalStatus: "pending",
+    };
+
+
+   console.log(newProfile)
+    console.log('createTutorProfile - New profile data:', newProfile);
+
+    await tutorProfileModel.create(newProfile);
+  }
+
+  async getTutorProfile(tutorId: string): Promise<ITutorProfile | null> {
+    return tutorProfileModel.findOne({ tutorId }).exec();
+  }
+
+  async updateTutorProfile(tutorId: string, profileData: Partial<TTutorProfileInput>): Promise<void> {
+    await tutorProfileModel.updateOne({ tutorId }, { $set: profileData });
+  }
 
   async updateRejectedReason(id: string, reason: string): Promise<void> {
     await tutorProfileModel.updateOne(
@@ -18,7 +48,6 @@ export class TutorRepository implements ITutorRepository {
     );
   }
 
-  
   async getTutorDetails(id: string): Promise<TTutorModel | null> {
     if (!Types.ObjectId.isValid(id)) return null;
 
@@ -41,10 +70,7 @@ export class TutorRepository implements ITutorRepository {
             _id: 1,
             name: 1,
             email: 1,
-            password: 1,
             role: 1,
-            isBlocked: 1,
-            isAccepted: 1,
             "tutorProfile.specialization": 1,
             "tutorProfile.verificationDocUrl": 1,
             "tutorProfile.approvalStatus": 1,
@@ -63,18 +89,14 @@ export class TutorRepository implements ITutorRepository {
       _id: tutorData._id,
       name: tutorData.name,
       email: tutorData.email,
-      password: tutorData.password || null,
       role: tutorData.role,
-      isBlocked: tutorData.isBlocked || false,
-      isAccepted: tutorData.isAccepted || false,
       specialization: tutorData.tutorProfile?.specialization || "",
       verificationDocUrl: tutorData.tutorProfile?.verificationDocUrl || "",
       approvalStatus: tutorData.tutorProfile?.approvalStatus || "pending",
       phone: tutorData.tutorProfile?.phone || "",
+      isBlocked: tutorData.isBlocked,
       bio: tutorData.tutorProfile?.bio || "",
       rejectionReason: tutorData.tutorProfile?.rejectionReason || "",
     };
   }
-
- 
 }

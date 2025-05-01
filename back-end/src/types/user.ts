@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import { Document, Types } from "mongoose";
 import { TPaginatedResult } from "./common";
 export type TUserRegister = {
   name: string;
@@ -27,12 +27,23 @@ export type TOtpVerify = {
 export type TUserModel = {
   name: string;
   email: string;
-  password?: string | null | undefined;
-  role: string;
-  _id?: Types.ObjectId;
+  password?: string | null;
+  role: "admin" | "student" | "tutor";
   isBlocked: boolean;
-  isAccepted?: boolean;
+  isAccepted: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  _id?: Types.ObjectId; // Optional for creation, required in documents
 };
+
+
+// ✅ Add this type to represent just the fields required to create a user
+export type TUserCreateInput = Omit<TUserModel, "_id" | "createdAt" | "updatedAt">;
+
+// ✅ Extend Mongoose Document correctly
+export interface TUserDocument extends TUserModel, Document<Types.ObjectId> {
+  _id: Types.ObjectId;
+}
 
 export type TUpdatePassword = {
   email: string;

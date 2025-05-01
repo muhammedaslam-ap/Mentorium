@@ -17,8 +17,9 @@ import AddCourse from "./pages/tutor/courses/add-course";
 import EditCourse from "./pages/tutor/courses/edit-course";
 
 import { PublicUserRoute } from "@/private/user/publicUserRoute";
-import { ProtectedTutorRoute, ProtectedUserRoute } from "@/private/user/protectedUserRoute";
+import { ProtectedTutorRoute } from "@/private/user/protectedUserRoute";
 import { ProtectedAdminRoute } from "@/private/user/protectedUserRoute";
+import TutorProfilePage from "./pages/tutor/profile/page";
 
 function App() {
   return (
@@ -76,6 +77,15 @@ function App() {
                 </ProtectedTutorRoute>
               }
             />
+
+            <Route
+              path="/tutor/profile"
+              element={
+                <ProtectedTutorRoute>
+                  <TutorProfilePage />
+                </ProtectedTutorRoute>
+              }
+          />
 
             {/* Admin routes */}
             <Route

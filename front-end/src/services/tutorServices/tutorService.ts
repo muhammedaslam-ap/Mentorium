@@ -1,52 +1,110 @@
-import { authAxiosInstance } from "@/api/authAxiosInstance";
 import { toast } from "sonner";
+import { authAxiosInstance } from "../../api/authAxiosInstance";
 
-export const tutorService = {
-  async tutorDetails() {
+interface ProfileData {
+  name: string;
+  specialization: string;
+  phone: string;
+  bio?: string;
+}
+
+interface ProfileResponse {
+  profile?: {
+    name?: string | null;
+    specialization?: string | null;
+    phone?: string | null;
+    bio?: string | null;
+    isAccepted?: boolean | null;
+    rejectionReason?: string | null;
+    verificationDocUrl?: string | null;
+  } | null;
+}
+
+export class TutorService {
+  async createProfile(profileData: ProfileData, file: File | null) {
     try {
-      const response = authAxiosInstance.get("/tutors/me");
-      return response;
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
+      const formData = new FormData();
+      formData.append("name", profileData.name);
+      formData.append("specialization", profileData.specialization);
+      formData.append("phone", profileData.phone);
+      if (profileData.bio) {
+        formData.append("bio", profileData.bio);
+      }
+      if (file) {
+        formData.append("verificationDoc", file);
+      }
+
+      console.log(
+        "FormData contents for profile creation:",
+        Array.from(formData.entries()).map(([key, value]) =>
+          typeof value === "object" ? `${key}: ${(value as File).name}` : `${key}: ${value}`
+        )
+      );
+
+      const response = await authAxiosInstance.post("/tutor/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 60000,
+      });
+      console.log("Profile creation response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to create profile:", error);
+      const errorMessage = error?.response?.data?.message || "Unable to create profile";
+      toast.error(errorMessage);
       throw error;
     }
-  },
+  }
 
-  async fetchNotification() {
+  async getProfile(): Promise<ProfileResponse> {
     try {
-      const response = await authAxiosInstance.get("/tutors/notifications");
-      return response;
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-      toast.error("Could not load notifications");
+      const response = await authAxiosInstance.get("/tutor/profile");
+      console.log("Profile fetch response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to fetch profile:", error);
+      throw error;
     }
-  },
+  }
 
-  async markNotifiactionAsRead(notificationId: string) {
+  async updateProfile(profileData: Partial<ProfileData>) {
     try {
-      await authAxiosInstance.put(
-        `/tutors/notifications/${notificationId}/read`
-      );
-    } catch (error) {
-      console.log(error);
+      const response = await authAxiosInstance.put("/tutor/editProfile", profileData);
+      console.log("Profile update response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      const errorMessage = error?.response?.data?.message || "Unable to update profile";
+      toast.error(errorMessage);
+      throw error;
     }
-  },
+  }
 
-  async markAllNotificationAsRead() {
+  async getDocumentPresignedUrl(): Promise<string> {
     try {
-      await authAxiosInstance.put("/tutors/notifications/read-all");
-    } catch (error) {
-      console.error("Failed to mark all notifications as read:", error);
-      toast.error("Failed to update notifications");
+      const response = await authAxiosInstance.get("/tutor/document");
+      console.log("Pre-signed URL response:", response.data);
+      return response.data.url;
+    } catch (error: any) {
+      console.error("Failed to fetch pre-signed URL:", error);
+      const errorMessage = error?.response?.data?.message || "Unable to fetch document URL";
+      toast.error(errorMessage);
+      throw error;
     }
-  },
+  }
+
+
   async logoutTutor() {
     try {
       const response = await authAxiosInstance.post("/auth/logout");
-      return response;
-    } catch (error) {
+      toast.success("Logged out successfully");
+      return response.data;
+    } catch (error: any) {
       console.error("Logout failed:", error);
-      toast.error("Failed to sign out");
+      const errorMessage = error?.response?.data?.message || "Failed to sign out";
+      toast.error(errorMessage);
+      throw error;
     }
-  },
-};
+  }
+}
+
+export const tutorService = new TutorService();

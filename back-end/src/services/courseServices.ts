@@ -25,7 +25,7 @@ export class CourseService implements ICourseService {
         success: true,
         statusCode: 200,
         course: {
-          _id: course._id.toString(), // Ensure _id is a string
+          _id: course._id.toString(), 
           title: course.title,
           tagline: course.tagline,
           category: course.category,
@@ -33,7 +33,7 @@ export class CourseService implements ICourseService {
           price: course.price,
           about: course.about,
           thumbnail: secureThumbnail,
-          tutor: course.tutorId.toString(), // Ensure tutorId is a string
+          tutor: course.tutorId.toString(), 
         },
       };
     } catch (error) {

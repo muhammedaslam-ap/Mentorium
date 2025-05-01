@@ -1,10 +1,25 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose';
 
+export interface ITutorProfile extends Document {
+  tutorId: mongoose.Types.ObjectId;
+  name:string,
+  phone: string;
+  specialization: string;
+  bio: string;
+  verificationDocUrl?: string;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+}
 
-const tutorProfileSchema = new mongoose.Schema({
+const tutorProfileSchema = new mongoose.Schema<ITutorProfile>({
   tutorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "user",
+    ref: 'user',
+    required: true,
+  },
+  name: {
+    type: String,
+    required: false,
   },
   phone: {
     type: String,
@@ -24,14 +39,13 @@ const tutorProfileSchema = new mongoose.Schema({
   },
   approvalStatus: {
     type: String,
-    enum: ["pending", "approved", "rejected"],
-    default: "pending",
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
   },
-  rejectionReason:{
-    type:String,
-    required:false,
-  }
+  rejectionReason: {
+    type: String,
+    required: false,
+  },
 });
 
-
-export const tutorProfileModel= mongoose.model('tutorProfile',tutorProfileSchema) 
+export const tutorProfileModel = mongoose.model<ITutorProfile>('tutorProfile', tutorProfileSchema);
