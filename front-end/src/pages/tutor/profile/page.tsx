@@ -31,7 +31,7 @@ interface TutorProfile {
   specialization: string;
   phone: string;
   bio: string;
-  isAccepted?: boolean | null;
+  approvalStatus?: string
   rejectionReason?: string;
   verificationDocUrl?: string;
 }
@@ -42,7 +42,7 @@ interface ProfileResponse {
     specialization?: string | null;
     phone?: string | null;
     bio?: string | null;
-    isAccepted?: boolean | null;
+    approvalStatus?: string | null;
     rejectionReason?: string | null;
     verificationDocUrl?: string | null;
   } | null;
@@ -91,7 +91,7 @@ export default function TutorProfilePage() {
           specialization: response.profile.specialization || "",
           phone: response.profile.phone || "",
           bio: response.profile.bio || "",
-          isAccepted: response.profile.isAccepted ?? null,
+          approvalStatus: response.profile.approvalStatus ?? "",
           rejectionReason: response.profile.rejectionReason || "",
           verificationDocUrl: response.profile.verificationDocUrl || "",
         };
@@ -119,7 +119,7 @@ export default function TutorProfilePage() {
           specialization: "",
           phone: "",
           bio: "",
-          isAccepted: null,
+          approvalStatus: "",
           rejectionReason: "",
           verificationDocUrl: "",
         });
@@ -133,7 +133,7 @@ export default function TutorProfilePage() {
         specialization: "",
         phone: "",
         bio: "",
-        isAccepted: null,
+        approvalStatus: "",
         rejectionReason: "",
         verificationDocUrl: "",
       });
@@ -231,13 +231,13 @@ export default function TutorProfilePage() {
   };
 
   const getStatusBadge = () => {
-    if (profile.isAccepted === true) {
+    if (profile.approvalStatus === "approved") {
       return (
         <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-200">
           <CheckCircle className="mr-1 h-3.5 w-3.5" /> Approved
         </Badge>
       );
-    } else if (profile.isAccepted === false) {
+    } else if (profile.approvalStatus === "rejected") {
       return (
         <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-200">
           <XCircle className="mr-1 h-3.5 w-3.5" /> Rejected
@@ -346,7 +346,7 @@ export default function TutorProfilePage() {
               )}
             </div>
 
-            {profile.isAccepted === false && profile.rejectionReason && (
+            {profile.approvalStatus === "rejected" && profile.rejectionReason && (
               <Alert className="mb-6 border-red-200 bg-red-50 text-red-800">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
                 <AlertTitle className="text-red-800 font-medium">Your profile verification was rejected</AlertTitle>
@@ -357,7 +357,7 @@ export default function TutorProfilePage() {
               </Alert>
             )}
 
-            {profile.isAccepted === null && (
+            {profile.approvalStatus === "peding" && (
               <Alert className="mb-6 landscape:mb-8 border-amber-200 bg-amber-50 text-amber-800">
                 <Clock className="h-5 w-5 text-amber-600" />
                 <AlertTitle className="text-amber-800 font-medium">Your profile is pending approval</AlertTitle>
@@ -395,9 +395,9 @@ export default function TutorProfilePage() {
                           <div className="flex justify-between items-center">
                             <span className="text-violet-700 font-medium">Status:</span>
                             <span className="text-violet-900">
-                              {profile.isAccepted === true
+                              {profile.approvalStatus === "approved"
                                 ? "Approved"
-                                : profile.isAccepted === false
+                                : profile.approvalStatus === "rejected"
                                 ? "Rejected"
                                 : "Pending"}
                             </span>

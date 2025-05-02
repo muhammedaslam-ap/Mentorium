@@ -123,7 +123,7 @@ export class TutorController {
       const tutorId = req.user?.id;
       const { name, specialization, phone, bio } = req.body;
       console.log(`Updating profile for tutorId: ${tutorId}`, { name, specialization, phone, bio });
-      console.log('updateTutorProfile - Request file:', req.file);
+      console.log('updateTutorProfile - Request file: ------------->', req.file);
 
       if (!tutorId) {
         console.error('updateTutorProfile - No tutor ID found');

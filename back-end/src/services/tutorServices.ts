@@ -53,12 +53,11 @@ export class TutorService {
     let newKey: string | undefined;
     let oldKey: string | undefined;
 
-    // Handle file upload
     if (file) {
       newVerificationDocUrl = file.location;
       newKey = file.key;
 
-      console.log(`Verifying new S3 file: ${newKey} (URL: ${newVerificationDocUrl})`);
+      console.log(`Verifying new S3 file:---------- ${newKey} (URL:-------------- ${newVerificationDocUrl})`);
       try {
         await s3Client.send(
           new HeadObjectCommand({
@@ -81,7 +80,7 @@ export class TutorService {
         if (currentProfile?.verificationDocUrl) {
           const urlParts = currentProfile.verificationDocUrl.split('/');
           oldKey = urlParts.slice(3).join('/');
-          console.log(`Old S3 file to delete: ${oldKey}`);
+          console.log(`Old S3 file to delete:------------ ${oldKey}`);
         }
       } catch (error: any) {
         console.error(`Failed to fetch current profile for tutorId: ${tutorId}`, error);
@@ -91,11 +90,11 @@ export class TutorService {
     }
 
     // Log updateData before database update
-    console.log(`Preparing to update profile for tutorId: ${tutorId}`, { updateData });
+    console.log(`Preparing to update profile for tutorId: -----${tutorId}`, { updateData });
 
     try {
       await this.tutorRepository.updateTutorProfile(tutorId, updateData);
-      console.log(`Profile updated successfully for tutorId: ${tutorId}`, { updateData });
+      console.log(`Profile updated successfully for tutorId:------------ ${tutorId}`, { updateData });
 
       // Delete old S3 file if it exists
       if (oldKey && newVerificationDocUrl) {

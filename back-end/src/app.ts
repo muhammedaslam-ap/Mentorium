@@ -13,6 +13,7 @@ import { OtpRoutes } from "./routes/otpRoute";
 import { AdminRoutes } from "./routes/adminRoute";
 import { CourseRoutes } from "./routes/courseRoute";
 import { TutorRoutes } from "./routes/tutorRoute";
+import  LessonRoutes  from "./routes/lessonRoute";
 
 connectDB();
 const app = express();
@@ -46,6 +47,8 @@ try {
   app.use("/admin",new AdminRoutes().router);
   app.use("/courses",new CourseRoutes().router);
   app.use("/tutor",new TutorRoutes().router); 
+  app.use("/tutor",LessonRoutes);
+
 
 } catch (error) {
   console.error("Error initializing routes:", error);

@@ -5,7 +5,7 @@ import {
   CustomRequest,
 } from '../middlewares/userAuthMiddleware';
 import { checkUserBlocked } from '../middlewares/checkUserBlocked';
-import uploadMiddleware from '../middlewares/S3.uploader';
+import {verificationUploadMiddleware} from '../middlewares/S3.uploader';
 import { injectedTutorController } from '../di/tutorInjection';
 
 export class TutorRoutes {
@@ -22,7 +22,7 @@ export class TutorRoutes {
       userAuthMiddleware,
       authorizeRole(['tutor']),
       checkUserBlocked,
-      uploadMiddleware,
+      verificationUploadMiddleware,
       (req: Request, res: Response) =>
         injectedTutorController.addTutorProfile(req as CustomRequest, res)
     );
@@ -42,7 +42,7 @@ export class TutorRoutes {
       userAuthMiddleware,
       authorizeRole(['tutor']),
       checkUserBlocked,
-      uploadMiddleware, 
+      verificationUploadMiddleware, 
       (req: Request, res: Response) =>
         injectedTutorController.updateTutorProfile(req as CustomRequest, res)
     );

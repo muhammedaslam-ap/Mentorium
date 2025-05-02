@@ -21,14 +21,15 @@ const sanitizeFileName = (fileName: string) => {
     .toLowerCase();
 };
 
-const upload = multer({
+// Uploader for verification documents (JPEG, PNG, PDF)
+const verificationUpload = multer({
   storage: multerS3({
     s3: s3Client,
     bucket: process.env.S3_BUCKET_NAME || 'mentorium',
     metadata: (req, file, cb) => {
       cb(null, { fieldName: file.fieldname });
     },
-    contentType: multerS3.AUTO_CONTENT_TYPE, // Automatically set ContentType
+    contentType: multerS3.AUTO_CONTENT_TYPE,
     key: (req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       const sanitizedFileName = sanitizeFileName(path.basename(file.originalname, ext));
@@ -52,14 +53,64 @@ const upload = multer({
   },
 }).single('verificationDoc');
 
-const uploadMiddleware = (req: Request, res: Response, next: Function) => {
-  upload(req, res, (err) => {
-    if (err) {
-      console.error('S3 upload error:', err.message);
-      return res.status(500).json({ message: 'Failed to upload file to S3' });
+// Uploader for lesson videos (MP4, AVI, MOV)
+const lessonVideoUpload = multer({
+  storage: multerS3({
+    s3: s3Client,
+    bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+    metadata: (req, file, cb) => {
+      cb(null, { fieldName: file.fieldname });
+    },
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    key: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const sanitizedFileName = sanitizeFileName(path.basename(file.originalname, ext));
+      const fileName = `${uuidv4()}${ext}`;
+      const key = `lesson-videos/${fileName}`;
+      console.log(`Uploading video to S3 with key: ${key} (original: ${file.originalname})`);
+      cb(null, key);
+    },
+  }),
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit
+  },
+  fileFilter: (req, file, cb)=>{
+    const filetypes = /mp4|avi|mov/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    if (mimetype && extname) {
+      return cb(null, true);
     }
+    cb(new Error('Invalid file type. Only MP4, AVI, and MOV are allowed.'));
+  },
+}).single('video');
+
+// Middleware for verification documents
+export const verificationUploadMiddleware = (req: Request, res: Response, next: Function) => {
+  verificationUpload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      console.error('Multer error:', err.message, err);
+      return res.status(400).json({ message: `Multer error: ${err.message}` });
+    } else if (err) {
+      console.error('S3 upload error:', err.message, err);
+      return res.status(400).json({ message: `File upload error: ${err.message}` });
+    }
+    console.log('verificationUploadMiddleware - File:', req.file);
     next();
   });
 };
 
-export default uploadMiddleware;
+// Middleware for lesson videos
+export const lessonVideoUploadMiddleware = (req: Request, res: Response, next: Function) => {
+  lessonVideoUpload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      console.error('Multer error:', err.message, err);
+      return res.status(400).json({ message: `Multer error: ${err.message}` });
+    } else if (err) {
+      console.error('S3 video upload error:', err.message, err);
+      return res.status(400).json({ message: `Video upload error: ${err.message}` });
+    }
+    console.log('lessonVideoUploadMiddleware - File:', req.file);
+    next();
+  });
+};

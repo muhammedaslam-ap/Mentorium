@@ -15,11 +15,16 @@ import TutorsManagement from "./pages/admin/tutors/page";
 import TutorCourses from "./pages/tutor/courses/courses";
 import AddCourse from "./pages/tutor/courses/add-course";
 import EditCourse from "./pages/tutor/courses/edit-course";
+import TutorProfilePage from "./pages/tutor/profile/page";
+
+// Import the new lesson management components
+import CourseLessons from "./pages/tutor/courses/lessons/lesson";
+import AddLesson from "./pages/tutor/courses/lessons/lesson";
+import EditLesson from "./pages/tutor/courses/lessons/lesson";
 
 import { PublicUserRoute } from "@/private/user/publicUserRoute";
 import { ProtectedTutorRoute } from "@/private/user/protectedUserRoute";
 import { ProtectedAdminRoute } from "@/private/user/protectedUserRoute";
-import TutorProfilePage from "./pages/tutor/profile/page";
 
 function App() {
   return (
@@ -78,6 +83,32 @@ function App() {
               }
             />
 
+            {/* New Lesson Management Routes */}
+            <Route
+              path="/tutor/courses/:courseId/lessons"
+              element={
+                <ProtectedTutorRoute>
+                  <CourseLessons />
+                </ProtectedTutorRoute>
+              }
+            />
+            <Route
+              path="/tutor/courses/:courseId/lessons/add"
+              element={
+                <ProtectedTutorRoute>
+                  <AddLesson />
+                </ProtectedTutorRoute>
+              }
+            />
+            <Route
+              path="/tutor/courses/:courseId/lessons/edit/:lessonId"
+              element={
+                <ProtectedTutorRoute>
+                  <EditLesson />
+                </ProtectedTutorRoute>
+              }
+            />
+
             <Route
               path="/tutor/profile"
               element={
@@ -85,7 +116,7 @@ function App() {
                   <TutorProfilePage />
                 </ProtectedTutorRoute>
               }
-          />
+            />
 
             {/* Admin routes */}
             <Route
