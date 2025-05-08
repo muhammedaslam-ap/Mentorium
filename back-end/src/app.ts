@@ -14,6 +14,7 @@ import { AdminRoutes } from "./routes/adminRoute";
 import { CourseRoutes } from "./routes/courseRoute";
 import { TutorRoutes } from "./routes/tutorRoute";
 import  LessonRoutes  from "./routes/lessonRoute";
+import { StudentRoutes } from "./routes/studentRoute";
 
 connectDB();
 const app = express();
@@ -47,6 +48,7 @@ try {
   app.use("/admin",new AdminRoutes().router);
   app.use("/courses",new CourseRoutes().router);
   app.use("/tutor",new TutorRoutes().router); 
+  app.use("/student", new StudentRoutes().router)
   app.use("/tutor",LessonRoutes);
 
 

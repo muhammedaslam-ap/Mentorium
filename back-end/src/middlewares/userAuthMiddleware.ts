@@ -22,7 +22,7 @@ export const userAuthMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies.userAccessToken ?? req.cookies.tutorAccessToken;
+    const token = req.cookies.studentAccessToken ?? req.cookies.tutorAccessToken;
 
     if (!token) {
       console.log("no token");
@@ -62,8 +62,7 @@ export const userAuthMiddleware = async (
 }
   export const authorizeRole = (allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
-      const user = (req as CustomRequest).user;
-  
+      const user = (req as CustomRequest).user;  
       if (!user || !allowedRoles.includes(user.role)) {
         console.log("role not allowed");
         res.status(HTTP_STATUS.FORBIDDEN).json({

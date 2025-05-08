@@ -19,7 +19,7 @@ export function PublicUserRoute({ children }: PublicUserRouteProps) {
 
   if (tutorData) {
     return <Navigate to={`/${tutorData.role}/home`} />;
-  } else if (userData?.role === 'user') {
+  } else if (userData?.role === 'student') {
     return <Navigate to={'/'} />;
   }
 

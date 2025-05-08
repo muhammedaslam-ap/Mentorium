@@ -47,7 +47,7 @@ export function Header() {
       toast.info("Please complete your profile verification to access all features.", {
         action: {
           label: "Update Profile",
-          onClick: () => navigate("/tutor/profileDetails"),
+          onClick: () => navigate("/tutor/profile"),
         },
         duration: 10000,
         closeButton: true,
@@ -112,15 +112,15 @@ export function Header() {
   // };
 
   const handleSignOut = async () => {
-    const response = await tutorService.logoutTutor()
-    toast.success(response?.data.message)
-    localStorage.removeItem("userData")
+    localStorage.removeItem("tutorDatas")
     dispatch(removeTutor())
     navigate("/auth")
+    const response = await tutorService.logoutTutor()
+    toast.success(response?.data.message)
   }
 
   const handleMyAccount = () => {
-    navigate("/tutor/profileDetails")
+    navigate("/tutor/profile")
   }
 
   // const handleUpdateProfile = () => {

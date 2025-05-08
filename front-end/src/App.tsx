@@ -1,39 +1,35 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Provider } from "react-redux";
-import { Toaster } from "sonner";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { Provider } from "react-redux"
+import { Toaster } from "sonner"
 
-import { store } from "./redux/store";
+import { store } from "./redux/store"
 
-import AuthForm from "./pages/authForm";
-import { NotFound } from "./pages/404pageNotFound";
-import { UserHomePage } from "./pages/student/home";
-import TutorHome from "./pages/tutor/home";
-import AdminLogin from "./pages/admin/login/login";
-import AdminDashboard from "./pages/admin/dashboard/dashboard";
-import StudentsManagement from "./pages/admin/students/page";
-import TutorsManagement from "./pages/admin/tutors/page";
-import TutorCourses from "./pages/tutor/courses/courses";
-import AddCourse from "./pages/tutor/courses/add-course";
-import EditCourse from "./pages/tutor/courses/edit-course";
-import TutorProfilePage from "./pages/tutor/profile/page";
+import AuthForm from "./pages/authForm"
+import { NotFound } from "./pages/404pageNotFound"
+import { UserHomePage } from "./pages/student/home"
+import TutorHome from "./pages/tutor/home"
+import AdminLogin from "./pages/admin/login/login"
+import AdminDashboard from "./pages/admin/dashboard/dashboard"
+import StudentsManagement from "./pages/admin/students/page"
+import TutorsManagement from "./pages/admin/tutors/page"
+import TutorCourses from "./pages/tutor/courses/courses"
+import AddCourse from "./pages/tutor/courses/add-course"
+import EditCourse from "./pages/tutor/courses/edit-course"
+import TutorProfilePage from "./pages/tutor/profile/page"
+import StudentProfilePage from "./pages/student/profile/profile"
 
 // Import the new lesson management components
-import CourseLessons from "./pages/tutor/courses/lessons/lesson";
-import AddLesson from "./pages/tutor/courses/lessons/lesson";
-import EditLesson from "./pages/tutor/courses/lessons/lesson";
+import CourseLessons from "./pages/tutor/courses/lessons/lesson"
+import AddLesson from "./pages/tutor/courses/lessons/lesson"
+import EditLesson from "./pages/tutor/courses/lessons/lesson"
 
-import { PublicUserRoute } from "@/private/user/publicUserRoute";
-import { ProtectedTutorRoute } from "@/private/user/protectedUserRoute";
-import { ProtectedAdminRoute } from "@/private/user/protectedUserRoute";
+import { PublicUserRoute } from "@/private/user/publicUserRoute"
+import { ProtectedTutorRoute, ProtectedAdminRoute, ProtectedUserRoute } from "@/private/user/protectedUserRoute"
 
 function App() {
   return (
     <>
-      <Toaster
-        richColors
-        position="top-right"
-        toastOptions={{ className: "text-sm p-0" }}
-      />
+      <Toaster richColors position="top-right" toastOptions={{ className: "text-sm p-0" }} />
 
       <Provider store={store}>
         <Router>
@@ -54,6 +50,24 @@ function App() {
                 <ProtectedTutorRoute>
                   <TutorHome />
                 </ProtectedTutorRoute>
+              }
+            />
+
+            {/* Student routes */}
+            <Route
+              path="/student/home"
+              element={
+                <ProtectedUserRoute>
+                  <UserHomePage />
+                </ProtectedUserRoute>
+              }
+            />
+            <Route
+              path="/student/profile"
+              element={
+                <ProtectedUserRoute>
+                  <StudentProfilePage />
+                </ProtectedUserRoute>
               }
             />
 
@@ -158,7 +172,7 @@ function App() {
         </Router>
       </Provider>
     </>
-  );
+  )
 }
 
-export default App;
+export default App

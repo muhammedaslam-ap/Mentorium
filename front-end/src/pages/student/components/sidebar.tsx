@@ -1,57 +1,53 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { User, Users, DollarSign, Book, ClipboardList, MessageSquare, LogOut, LayoutDashboard } from "lucide-react"
+import { User, BookOpen, Heart, Settings, LogOut, LayoutDashboard, BookOpenCheck } from 'lucide-react'
 import { useNavigate, useLocation } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { tutorService } from "@/services/tutorServices/tutorService"
+import { studentService } from "@/services/studentServices/studentServices"
 import { removeUser } from "@/redux/slice/userSlice"
 
-export function Sidebar({ sidebarOpen } : {sidebarOpen : boolean}) {
+export function Sidebar({ sidebarOpen }) {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
-  const [isAccepted, setIsAccepted] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchTutorProfile = async () => {
-    // try {
-    //   const response = await tutorService.tutorDetails()
-    //   setIsAccepted(response.data.tutor.isAccepted)
-    //   setLoading(false)
-    // } catch (error) {
-    //   console.error("Failed to fetch tutor profile:", error)
-    //   toast.error("Failed to load profile data")
-    //   setLoading(false)
-    // }
+  const fetchStudentProfile = async () => {
+    try {
+    //   const response = await studentService.studentDetails()
+      setLoading(false)
+    } catch (error) {
+      console.error("Failed to fetch student profile:", error)
+      toast.error("Failed to load profile data")
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    // fetchTutorProfile()
-    setLoading(false)
+    fetchStudentProfile()
   }, [])
 
   const navItems = [
-    { icon: <LayoutDashboard className="h-4 w-4" />, name: "Dashboard", path: "/tutor/home", disabled: false },
-    { icon: <User className="h-4 w-4" />, name: "Profile", path: "/tutor/profile", disabled: isAccepted === false },
-    { icon: <Users className="h-4 w-4" />, name: "Students", path: "/tutor/students", disabled: isAccepted === false },
+    { icon: <LayoutDashboard className="h-4 w-4" />, name: "Dashboard", path: "/student/home", disabled: false },
+    { icon: <User className="h-4 w-4" />, name: "Profile", path: "/student/profile", disabled: false },
+    { icon: <BookOpen className="h-4 w-4" />, name: "Courses", path: "/student/courses", disabled: false },
     {
-      icon: <DollarSign className="h-4 w-4" />,
-      name: "Revenue",
-      path: "/tutor/revenue",
-      disabled: isAccepted === false,
+      icon: <BookOpenCheck className="h-4 w-4" />,
+      name: "My Learning",
+      path: "/student/my-learning",
+      disabled: false,
     },
-    { icon: <Book className="h-4 w-4" />, name: "Courses", path: "/tutor/courses", disabled: isAccepted === false },
-    { icon: <ClipboardList className="h-4 w-4" />, name: "Quiz", path: "/tutor/quiz", disabled: isAccepted === false },
-    { icon: <MessageSquare className="h-4 w-4" />, name: "Chat", path: "/tutor/chat", disabled: isAccepted === false },
+    { icon: <Heart className="h-4 w-4" />, name: "Wishlist", path: "/student/wishlist", disabled: false },
+    { icon: <Settings className="h-4 w-4" />, name: "Settings", path: "/student/settings", disabled: false },
   ]
 
   const handleLogout = async () => {
     try {
-      const response = await tutorService.logoutTutor()
-      toast.success(response?.data.message)
+      const response = await studentService.logoutStudent()
+      toast.success(response?.message || "Logged out successfully")
       localStorage.removeItem("userData")
       dispatch(removeUser())
       navigate("/auth")
@@ -112,7 +108,7 @@ export function Sidebar({ sidebarOpen } : {sidebarOpen : boolean}) {
                 } ${item.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 onClick={() => handleNavigation(item.path)}
                 disabled={item.disabled}
-                title={item.disabled ? "This feature is available only after acceptance" : undefined}
+                title={item.disabled ? "This feature is not available yet" : undefined}
               >
                 <span className={`${isActive ? "text-white" : "text-violet-600"}`}>{item.icon}</span>
                 <span className="ml-2 font-medium">{item.name}</span>

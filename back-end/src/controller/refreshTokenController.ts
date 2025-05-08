@@ -19,12 +19,12 @@ export class RefreshTokenController {
     try {
 
       const token =
-        req.cookies.userRefreshToken ||
+        req.cookies.studentRefreshToken ||
         req.cookies.adminRefreshToken ||
         req.cookies.tutorRefreshToken;
 
 
-        console.log('inside refresh token controller======>')
+        console.log('inside refresh token controller======>',req.cookies )
       
       const newTokens = this._refreshTokenService.execute(
         token 

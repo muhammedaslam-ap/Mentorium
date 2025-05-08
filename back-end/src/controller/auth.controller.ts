@@ -85,7 +85,7 @@ export class AuthController {
 
   async logoutUser(req: Request, res: Response) {
     try {
-      res.clearCookie("userAccessToken");
+      res.clearCookie("studentAccessToken");
       res
         .clearCookie("tutorAccessToken")
         .status(200)

@@ -1,28 +1,25 @@
 import { Controller } from "../controller/googleController";
-// import { UserController } from "../controller/userController";
+import { StudentController } from "../controller/studentController";
 import { RefreshTokenController } from "../controller/refreshTokenController";
-import { UserRepository } from "../repositories/userRepository";
 import { GoogleService } from "../services/googleAuth/googleService";
 import { JwtService } from "../services/jwt/jwt";
 import { RefreshTokenService } from "../services/refreshTokenService";
-// import { UserService } from "../services/userService";
-// import { UserProfileRepository } from "../repository/userProfileRepository";
+import { StudentService } from "../services/studentServices";
+import { StudentRepository } from "../repositories/studentRepository";
+import { UserRepository } from "../repositories/userRepository";
 
-const userRepository = new UserRepository();
-// const userProfileRepository = new UserProfileRepository();
-
+const studentRepository = new StudentRepository();
+const userRepository = new UserRepository()
 const tokenService = new JwtService();
 
-// const userService = new UserService(userRepository,userProfileRepository);
+const studentervice = new StudentService(studentRepository);
 
 const refreshTokenService = new RefreshTokenService(tokenService);
 const googleService = new GoogleService(userRepository);
 
-// export const injectedUserController = new UserController(
-//   userService,
-//   userRepository,
-//   userProfileRepository
-// );
+export const injectedUserController = new StudentController(
+  studentervice,
+);
 
 export const injectedRefreshTokenController = new RefreshTokenController(
   refreshTokenService

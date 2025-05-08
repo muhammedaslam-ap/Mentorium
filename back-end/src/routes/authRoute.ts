@@ -5,6 +5,7 @@ import { injectedAuthController,
 import {injectedGoogleController} from '../di/userInjection'
 import { Request, Response, Router } from "express";
 import { resetPasswordSchema } from "../validation/passwordValidation";
+import { injectedRefreshTokenController } from "../di/userInjection";
 
 export class authRoutes{
     public router : Router
@@ -37,6 +38,9 @@ export class authRoutes{
      );
      this.router.post("/google-auth", (req: Request, res: Response) =>
         injectedGoogleController.handle(req, res)
+      );
+    this.router.post("/refresh-token", (req: Request, res: Response) =>
+        injectedRefreshTokenController.handle(req, res)
       );
 
       this.router.post("/verifyEmail", async (req: Request, res: Response) => {
