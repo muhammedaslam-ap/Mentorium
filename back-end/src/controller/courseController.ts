@@ -76,7 +76,7 @@ export class CourseController {
       }
 
       const result = await this._courseService.getCourseById(courseId, userId);
-
+      console.log(result)
       res.status(result.statusCode).json({
         success: result.success,
         message: result.message || '',
@@ -199,58 +199,68 @@ export class CourseController {
     }
   }
 
-  async getAllCourses(req: CustomRequest, res: Response) {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const search = (req.query.search as string | undefined) || "";
-      const category = (req.query.category as string | undefined) || "";
-      const difficulty = (req.query.difficulty as string | undefined) || "";
-      const minPrice =
-        typeof req.query.minPrice == "number"
-          ? req.query.minPrice
-          : parseInt(req.query.minPrice as string) || 0;
-      const maxPrice =
-        typeof req.query.maxPrice == "number"
-          ? req.query.maxPrice
-          : parseInt(req.query.maxPrice as string) || 1500;
-      const sort = (req.query.sort as string | undefined) || "";
+ async getAllCourses(req: CustomRequest, res: Response) {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 6;
+    const search = (req.query.search as string | undefined)?.trim() || "";
+    const category = (req.query.category as string | undefined)?.trim() || "";
+    const difficulty = (req.query.difficulty as string | undefined)?.trim() || "";
+    const minPriceStr = req.query.minPrice as string | undefined;
+    const maxPriceStr = req.query.maxPrice as string | undefined;
+    const sort = (req.query.sort as string | undefined)?.trim() || "";
 
-      const { courses, total } = await this._courseService.getAllCourses({
-        page,
-        limit,
-        search,
-        category,
-        difficulty,
-        minPrice,
-        maxPrice,
-        sort,
-      });
+    // Validate numeric query parameters
+    const minPrice = minPriceStr ? parseInt(minPriceStr) : 0;
+    const maxPrice = maxPriceStr ? parseInt(maxPriceStr) : 1500;
 
-      const updatedCourses = courses
-        ? await Promise.all(
-            courses.map(async (course) => {
-              if (course.thumbnail) {
-                console.log("COURSE THUMBNAIL", course.thumbnail);
-                course.thumbnail = await createSecureUrl(course.thumbnail, "image");
-              }
-              return course;
-            })
-          )
-        : [];
-
-      res.status(HTTP_STATUS.OK).json({
-        success: true,
-        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
-        courses: { courses: updatedCourses, total },
-      });
-    } catch (error) {
-      if (error instanceof CustomError) {
-        res.status(error.statusCode).json({ success: false, message: error.message });
-        return;
-      }
-      console.log(error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+    if (isNaN(minPrice) || isNaN(maxPrice)) {
+      throw new CustomError("Invalid price range", HTTP_STATUS.BAD_REQUEST);
     }
+
+    if (minPrice < 0 || maxPrice < minPrice) {
+      throw new CustomError("Invalid price range values", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const { courses, total } = await this._courseService.getAllCourses({
+      page,
+      limit,
+      search,
+      category,
+      difficulty,
+      minPrice,
+      maxPrice,
+      sort,
+    });
+
+    const updatedCourses = courses
+      ? await Promise.all(
+          courses.map(async (course) => {
+            if (course.thumbnail) {
+              console.log("COURSE THUMBNAIL", course.thumbnail);
+              course.thumbnail = await createSecureUrl(course.thumbnail, "image");
+            }
+            return course;
+          })
+        )
+      : [];
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+      courses: { courses: updatedCourses, total },
+    });
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.statusCode).json({ success: false, message: error.message });
+      return;
+    }
+    console.log(error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: ERROR_MESSAGES.SERVER_ERROR,
+    });
   }
+}
+
 }

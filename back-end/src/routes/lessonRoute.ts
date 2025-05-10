@@ -34,7 +34,7 @@ export class LessonRoutes {
     this.router.get(
       '/lessons/:lessonId',
       userAuthMiddleware,
-      authorizeRole(['tutor']),
+      authorizeRole(['tutor','student']),
       checkUserBlocked,
       (req: Request, res: Response) =>
         lessonController.getLesson(req as CustomRequest, res)
@@ -44,7 +44,7 @@ export class LessonRoutes {
     this.router.get(
       '/courses/:courseId/lessons',
       userAuthMiddleware,
-      authorizeRole(['tutor']),
+      authorizeRole(['tutor','student']),
       checkUserBlocked,
       (req: Request, res: Response) =>
         lessonController.getLessonsByCourse(req as CustomRequest, res)

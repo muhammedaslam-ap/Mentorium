@@ -28,6 +28,31 @@ export const courseService = {
     }
   },
 
+  async getCourseDetailsInStudentSide(courseId: string) {
+    try {
+      const response = await authAxiosInstance.get(`/student/courses/${courseId}`)
+      console.log("getCourseDetailsin user side Response:", response.data)
+      const foundCourse = response.data?.course
+      if (!foundCourse) {
+        throw new Error("Course not found")
+      }
+      return foundCourse
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        console.error("Failed to fetch course details:", error)
+        const message =
+          error.response?.data?.message ||
+          (error.request ? "Network error: Unable to connect to the server" : "Failed to load course details")
+        toast.error(message)
+        return null // Returning null on error
+      } else {
+        console.error("Unexpected error:", error)
+        toast.error("An unexpected error occurred")
+        return null
+      }
+    }
+  },
+
   async getSpecificTutorCourse(page: number, limit: number, search = "") {
     try {
       const { data } = await authAxiosInstance.get("/courses/my-courses", {
@@ -89,7 +114,7 @@ export const courseService = {
 
   async getAllCourse(params: URLSearchParams) {
     try {
-      const response = await authAxiosInstance.get(`/courses/all-courses?${params.toString()}`)
+      const response = await authAxiosInstance.get(`/student/all-courses?${params.toString()}`)
       console.log("getAllCourse Response:", response.data)
       return response.data
     } catch (error) {
@@ -110,7 +135,7 @@ export const courseService = {
 
   async getAllCourses(page: number, limit: number) {
     try {
-      const { data } = await authAxiosInstance.get("/courses/all-courses", {
+      const { data } = await authAxiosInstance.get("/student/all-courses", {
         params: { page, limit },
       })
       console.log("getAllCourses Response:", data)

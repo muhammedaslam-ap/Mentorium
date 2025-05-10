@@ -61,7 +61,7 @@ export const lessonService = {
   async getLessonsByCourse(courseId: string) {
     try {
       const response = await authAxiosInstance.get(`/tutor/courses/${courseId}/lessons`);
-      console.log("getLessonsByCourse Response:", response.data);
+      console.log("getLessonsByCourse Response:----------------->", response.data);
       return response.data;
     } catch (error) {
       if (error instanceof AxiosError) {

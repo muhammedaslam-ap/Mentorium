@@ -29,6 +29,12 @@ export type TCourseResponse = {
   about: string;
   thumbnail: string;
   tutorId: string;
+  tutor:{
+    name:string 
+    phone:string
+    specialization:string
+    bio:string
+  }
 };
 
 export type TLessonAdd = {

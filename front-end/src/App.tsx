@@ -25,6 +25,8 @@ import EditLesson from "./pages/tutor/courses/lessons/lesson"
 
 import { PublicUserRoute } from "@/private/user/publicUserRoute"
 import { ProtectedTutorRoute, ProtectedAdminRoute, ProtectedUserRoute } from "@/private/user/protectedUserRoute"
+import CourseDetails from "./pages/student/courses/courseID/courseID"
+import AllCoursesPage from "./pages/student/courses/page"
 
 function App() {
   return (
@@ -70,6 +72,23 @@ function App() {
                 </ProtectedUserRoute>
               }
             />
+              <Route
+              path="/student/courses"
+              element={
+                <ProtectedUserRoute>
+                  <AllCoursesPage />
+                </ProtectedUserRoute>
+              }
+            />
+            <Route
+              path="/student/courses/:courseId"
+              element={
+                <ProtectedUserRoute>
+                  <CourseDetails />
+                </ProtectedUserRoute>
+              }
+            />
+
 
             {/* Tutor routes */}
             <Route

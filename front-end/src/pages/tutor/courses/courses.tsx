@@ -16,6 +16,7 @@ import {
 import { Button, Input, Menu, Tag, Spin, Modal, Pagination } from "antd"
 import { Card, CardContent } from "@/components/ui/card"
 import { courseService } from "@/services/courseServices/courseService"
+import { lessonService } from "@/services/lessonServices/lessonServices"
 import Sidebar from "../components/sideBar"
 import Header from "../components/header"
 import { AxiosError } from "axios"
@@ -32,7 +33,6 @@ interface Course {
   thumbnail: string
   enrollments?: number
   createdAt?: string
-  lessonCount?: number
 }
 
 interface SortOption {
@@ -61,13 +61,11 @@ const TutorCourses: React.FC = () => {
     setLoading(true)
     try {
       const response = await courseService.getSpecificTutorCourse(currentPage, coursesPerPage, searchQuery)
-      console.log("fetchCourses Response:", response)
+      console.log("fetchCourses Response:---------------------------", response)
       if (response && response.data) {
         setCourses(response.data.courses || [])
         setTotalCourses(response.data.totalCourses || 0)
         setTotalPages(Math.ceil((response.data.totalCourses || 0) / coursesPerPage))
-
-        // Fetch lesson counts for each course
         fetchLessonCounts(response.data.courses)
       } else {
         toast.error("No course data returned")
@@ -89,28 +87,28 @@ const TutorCourses: React.FC = () => {
     const counts: Record<string, number> = {}
 
     try {
-      // Create an array of promises for fetching lesson counts
       const countPromises = courses.map(async (course) => {
         try {
-          const response = await courseService.getLessonsByCourse(course._id)
-          counts[course._id] = response?.data?.lessons?.length || 0
+          const response = await lessonService.getLessonsByCourse(course._id)
+          console.log(`Lesson count response for course ${course._id}:`, Array.isArray(response?.lessons) ? response.lessons.length: 0)
+          const lessonCount =  Array.isArray(response?.lessons) ? response.lessons.length: 0
+          counts[course._id] = lessonCount
         } catch (error) {
           console.error(`Error fetching lessons for course ${course._id}:`, error)
           counts[course._id] = 0
         }
       })
 
-      // Wait for all promises to resolve
       await Promise.all(countPromises)
       setLessonCounts(counts)
     } catch (error) {
       console.error("Error fetching lesson counts:", error)
+      toast.error("Failed to fetch lesson counts")
     } finally {
       setLoadingLessonCounts(false)
     }
   }
 
-  // Debounced search handler
   const debouncedFetchCourses = useCallback(
     debounce(() => {
       setCurrentPage(1)
@@ -219,14 +217,6 @@ const TutorCourses: React.FC = () => {
     navigate(`/tutor/courses/${courseId}/lessons/add?title=${encodeURIComponent(courseTitle)}`)
   }
 
-  const filterMenu = (
-    <Menu>
-      <Menu.Item key="all">All Courses</Menu.Item>
-      <Menu.Item key="published">Published</Menu.Item>
-      <Menu.Item key="draft">Draft</Menu.Item>
-    </Menu>
-  )
-
   const sortMenu = (
     <Menu onClick={handleSortSelect}>
       <Menu.Item
@@ -263,7 +253,7 @@ const TutorCourses: React.FC = () => {
   )
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-white dark:bg-gray-800">
       {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen} />
 
@@ -274,90 +264,93 @@ const TutorCourses: React.FC = () => {
 
         {/* Main Content Area */}
         <main className={`flex-1 p-8 ${sidebarOpen ? "md:ml-64" : "md:ml-16"} transition-all duration-300`}>
-          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 16px" }}>
-            <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: "bold", color: "#1d39c4" }}>My Courses</h1>
-                <p style={{ color: "#595959" }}>Manage your course offerings</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Courses</h1>
+                <p className="text-gray-600 dark:text-gray-300">Manage your course offerings</p>
               </div>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/tutor/courses/add")}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate("/tutor/courses/add")}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-none"
+              >
                 Add New Course
               </Button>
             </div>
 
-            <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="flex justify-between items-center mb-6">
               <form
                 onSubmit={handleSearchSubmit}
-                style={{ display: "flex", maxWidth: 400, alignItems: "center", gap: 8 }}
+                className="flex max-w-md items-center gap-2"
               >
                 <Input
                   placeholder="Search by title, tagline, or category..."
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  prefix={<SearchOutlined />}
+                  prefix={<SearchOutlined className="text-gray-500 dark:text-gray-400" />}
                   allowClear
+                  className="border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
-                <Button type="primary" htmlType="submit" icon={<SearchOutlined />} loading={loading}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  icon={<SearchOutlined />}
+                  loading={loading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-none"
+                >
                   Search
                 </Button>
               </form>
             </div>
 
             {loading ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, index) => (
-                  <Card key={index} style={{ border: "1px solid #f0f0f0" }}>
-                    <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
+                  <Card key={index} className="border-gray-200 dark:border-gray-700 shadow-sm">
+                    <Spin indicator={<LoadingOutlined className="text-blue-600 dark:text-blue-400" style={{ fontSize: 24 }} spin />} />
                   </Card>
                 ))}
               </div>
             ) : courses.length === 0 ? (
-              <Card style={{ textAlign: "center", padding: 32, border: "1px solid #f0f0f0" }}>
-                <BookOutlined style={{ fontSize: 64, color: "#1d39c4", marginBottom: 16 }} />
-                <h3 style={{ fontSize: 20, fontWeight: "bold", color: "#1d39c4" }}>No courses found</h3>
-                <p style={{ color: "#595959", marginBottom: 24 }}>
+              <Card className="text-center p-8 border-gray-200 dark:border-gray-700 shadow-sm">
+                <BookOutlined className="text-blue-600 dark:text-blue-400 text-4xl mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">No courses found</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
                   {searchQuery ? "No courses match your search." : "You haven't created any courses yet."}
                 </p>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/tutor/courses/add")}>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => navigate("/tutor/courses/add")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-none"
+                >
                   Create Your First Course
                 </Button>
               </Card>
             ) : (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 24 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map((course) => (
-                    <Card key={course._id} style={{ border: "1px solid #f0f0f0", overflow: "hidden" }}>
-                      <div style={{ height: 192, overflow: "hidden", background: "#f0f2f5", position: "relative" }}>
+                    <Card
+                      key={course._id}
+                      className="border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow rounded-lg overflow-hidden"
+                    >
+                      <div className="h-48 overflow-hidden bg-gray-100 dark:bg-gray-700 relative">
                         {course.thumbnail ? (
                           <img
-                            src={course.thumbnail || "/placeholder.svg"}
+                            src={course.thumbnail}
                             alt={course.title}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            className="w-full h-full object-cover"
                             onError={() => console.error("Failed to load thumbnail:", course.thumbnail)}
                           />
                         ) : (
-                          <div
-                            style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}
-                          >
-                            <BookOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />
+                          <div className="flex items-center justify-center h-full">
+                            <BookOutlined className="text-gray-400 dark:text-gray-500 text-4xl" />
                           </div>
                         )}
-                        {/* Lesson count badge */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 8,
-                            right: 8,
-                            background: "rgba(0,0,0,0.6)",
-                            color: "white",
-                            padding: "2px 8px",
-                            borderRadius: 12,
-                            fontSize: 12,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
+                        <div className="absolute top-2 right-2 bg-gray-900/70 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
                           <VideoCameraOutlined />
                           {loadingLessonCounts ? (
                             <Spin size="small" />
@@ -368,64 +361,30 @@ const TutorCourses: React.FC = () => {
                           )}
                         </div>
                       </div>
-                      <CardContent style={{ padding: 16 }}>
-                        <h3
-                          style={{
-                            fontSize: 18,
-                            fontWeight: "bold",
-                            color: "#1d39c4",
-                            marginBottom: 8,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
+                      <CardContent className="p-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 truncate">
                           {course.title}
                         </h3>
-                        <p
-                          style={{
-                            color: "#595959",
-                            fontSize: 14,
-                            marginBottom: 16,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            height: "40px",
-                          }}
-                        >
+                        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
                           {course.tagline}
                         </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: 16,
-                          }}
-                        >
+                        <div className="flex justify-between items-center mb-4">
                           <Tag color={getDifficultyColor(course.difficulty)}>{course.difficulty}</Tag>
-                          <span style={{ fontWeight: "bold", color: "#1d39c4" }}>${course.price.toFixed(2)}</span>
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            ${course.price.toFixed(2)}
+                          </span>
                         </div>
-                        <p style={{ color: "#595959", fontSize: 12 }}>
+                        <p className="text-gray-500 dark:text-gray-400 text-xs">
                           {course.enrollments || 0} {course.enrollments === 1 ? "student" : "students"} enrolled
                         </p>
                       </CardContent>
-                      <CardContent
-                        style={{
-                          padding: 16,
-                          borderTop: "1px solid #f0f0f0",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <CardContent className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+                        <div className="flex gap-2">
                           <Button
                             danger
                             icon={<DeleteOutlined />}
                             onClick={() => showDeleteModal(course._id)}
-                            style={{ flex: 1 }}
+                            className="flex-1 border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/50"
                           >
                             Delete
                           </Button>
@@ -433,27 +392,23 @@ const TutorCourses: React.FC = () => {
                             type="primary"
                             icon={<EditOutlined />}
                             onClick={() => navigate(`/tutor/courses/edit/${course._id}`)}
-                            style={{ flex: 1 }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-none"
                           >
                             Edit
                           </Button>
                         </div>
-
-                        {/* Lesson management buttons */}
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                        <div className="flex gap-2">
                           <Button
-                            type="default"
                             icon={<PlusOutlined />}
                             onClick={() => navigateToAddLesson(course._id, course.title)}
-                            style={{ flex: 1, borderColor: "#52c41a", color: "#52c41a" }}
+                            className="flex-1 border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/50"
                           >
                             Add Lesson
                           </Button>
                           <Button
-                            type="default"
                             icon={<PlayCircleOutlined />}
                             onClick={() => navigateToLessons(course._id, course.title)}
-                            style={{ flex: 1, borderColor: "#1d39c4", color: "#1d39c4" }}
+                            className="flex-1 border-blue-500 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/50"
                             disabled={!lessonCounts[course._id]}
                           >
                             View Lessons
@@ -465,13 +420,14 @@ const TutorCourses: React.FC = () => {
                 </div>
 
                 {totalPages > 1 && (
-                  <div style={{ marginTop: 32, textAlign: "center" }}>
+                  <div className="mt-8 text-center">
                     <Pagination
                       current={currentPage}
                       total={totalCourses}
                       pageSize={coursesPerPage}
                       onChange={handlePageChange}
                       showSizeChanger={false}
+                      className="ant-pagination-item-active:bg-blue-600 ant-pagination-item-active:border-blue-600"
                     />
                   </div>
                 )}
@@ -486,8 +442,9 @@ const TutorCourses: React.FC = () => {
               confirmLoading={deleting}
               okText="Delete"
               okButtonProps={{ danger: true }}
+              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
-              <p>Are you sure you want to delete this course?</p>
+              <p className="text-gray-600 dark:text-gray-300">Are you sure you want to delete this course?</p>
             </Modal>
           </div>
         </main>
@@ -506,9 +463,9 @@ class TutorCoursesErrorBoundary extends React.Component<{ children: React.ReactN
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ textAlign: "center", padding: 32 }}>
-          <h1 style={{ fontSize: 24, color: "#ff4d4f" }}>Something went wrong</h1>
-          <p style={{ color: "#595959" }}>Please try refreshing the page or contact support.</p>
+        <div className="text-center p-8 bg-white dark:bg-gray-800">
+          <h1 className="text-2xl font-semibold text-red-500">Something went wrong</h1>
+          <p className="text-gray-600 dark:text-gray-300">Please try refreshing the page or contact support.</p>
         </div>
       )
     }

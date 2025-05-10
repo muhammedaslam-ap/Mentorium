@@ -80,7 +80,7 @@ export class StudentController {
         return;
       }
 
-      if (!aboutMe && !education && (!interests || !Array.isArray(interests))) {
+      if (!aboutMe && !education && (!interests)) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.VALIDATION_ERROR });
         return;
       }
@@ -89,7 +89,7 @@ export class StudentController {
         studentId,
         ...(aboutMe && { aboutMe }),
         ...(education && { education }),
-        ...(interests && Array.isArray(interests) && { interests }),
+        ...(interests &&  { interests }),
       };
 
       await this.studentService.updateStudentProfile(studentId, profileData as IStudentProfile);

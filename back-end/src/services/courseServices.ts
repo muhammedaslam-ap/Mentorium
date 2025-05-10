@@ -14,6 +14,7 @@ export class CourseService implements ICourseService {
       }
 
       const course = await this._courseRepository.findByIdAndTutor(courseId, tutorId);
+      console.log(courseId, tutorId)
 
       if (!course) {
         return { success: false, statusCode: 404, message: "Course not found or unauthorized" };
@@ -33,7 +34,13 @@ export class CourseService implements ICourseService {
           price: course.price,
           about: course.about,
           thumbnail: secureThumbnail,
-          tutor: course.tutorId.toString(), 
+          tutorId: course.tutorId.toString(),
+          tutor:{
+            name:course.tutor.name,
+            phone:course.tutor.phone,
+            specialization:course.tutor.specialization,
+            bio:course.tutor.bio
+          }
         },
       };
     } catch (error) {

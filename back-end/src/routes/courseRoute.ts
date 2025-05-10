@@ -69,20 +69,11 @@ export class CourseRoutes {
       userAuthMiddleware,
       authorizeRole(["tutor"]),
       checkUserBlocked,
-
       (req: Request, res: Response) =>
         injectedCourseController.deleteCourse(req as CustomRequest, res)
     );
 
-    this.router.get(
-      "/all-courses",
-      userAuthMiddleware,
-      authorizeRole(["user"]),
-      checkUserBlocked,
-
-      (req: Request, res: Response) =>
-        injectedCourseController.getAllCourses(req as CustomRequest, res)
-    );
+  
   }
 }
 

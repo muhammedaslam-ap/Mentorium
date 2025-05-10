@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { removeUser } from "@/redux/slice/userSlice";
 import { toast } from "sonner";
+import { studentService } from '../../../services/studentServices/studentServices';
 import {
   BookOpen,
   Heart,
@@ -26,23 +27,45 @@ interface User {
 const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [studentName, setStudentName] = useState<string>("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user.userDatas) as User | null;
 
-    const handleLogout = async () => {
-      try {
-        console.log("Calling logoutUser");
-        await userAuthService.logoutUser();
-        dispatch(removeUser());
-        localStorage.removeItem("userDatas");
-        toast.success("Logged out successfully");
-        navigate("/");
-      } catch (error) {
-        console.error("Logout error:", error);
-        toast.error("Failed to logout");
+  const handleLogout = async () => {
+    try {
+      console.log("Calling logoutUser");
+      await userAuthService.logoutUser();
+      dispatch(removeUser());
+      localStorage.removeItem("userDatas");
+      toast.success("Logged out successfully");
+      navigate("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
+    }
+  };
+
+  const fetchStudentDetails = async () => {
+    try {
+      const response = await studentService.studentDetails();
+      if (response?.details?.name) {
+        setStudentName(response.details.name || "Student");
+      } else {
+        setStudentName("Student");
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch student details:", error);
+      setStudentName("Student");
+    }
+  };
+
+  // Fetch student details on component mount
+  useEffect(() => {
+    if (user) {
+      fetchStudentDetails();
+    }
+  }, [user]);
 
   // Navigation Links
   const navLinks = [
@@ -55,10 +78,13 @@ const Header: React.FC = () => {
 
   // Profile Dropdown Items
   const profileMenuItems = [
-    { label: "Profile", icon: User, onClick: () => navigate("/profile") },
+    { label: "Profile", icon: User, onClick: () => navigate("/student/profile") },
     { label: "Wishlist", icon: Heart, onClick: () => navigate("/wishlist") },
     { label: "Sign out", icon: LogOut, onClick: handleLogout },
   ];
+
+  // Get the first letter of studentName or fallback to "S"
+  const firstLetter = studentName ? studentName.charAt(0).toUpperCase() : "S";
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
@@ -101,13 +127,11 @@ const Header: React.FC = () => {
                 onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <img
-                  src="/placeholder.svg"
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full border-2 border-blue-600 dark:border-blue-400"
-                />
+                <div className="w-8 h-8 rounded-full border-2 border-blue-600 dark:border-blue-400 bg-blue-600 dark:bg-blue-400 text-white flex items-center justify-center text-lg font-semibold">
+                  {firstLetter}
+                </div>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{user.name}</span>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">{studentName || "Student"}</span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
                 </div>
               </button>

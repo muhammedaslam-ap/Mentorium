@@ -14,6 +14,7 @@ import {
   FileOutlined,
   InfoCircleOutlined,
   UploadOutlined,
+  PlayCircleOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -72,6 +73,8 @@ const CourseLessons: React.FC = () => {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string>("");
 
   // Debug params to verify courseId
   useEffect(() => {
@@ -100,23 +103,10 @@ const CourseLessons: React.FC = () => {
     try {
       console.log("Fetching lessons for courseId:", id);
       const response = await lessonService.getLessonsByCourse(id);
-      console.log("fetchLessons Raw Response:", response);
-      
-      let lessonsData: Lesson[] = [];
-      
-      // Handle different response formats
-      if (Array.isArray(response)) {
-        lessonsData = response;
-      } else if (response.lessons && Array.isArray(response.lessons)) {
-        lessonsData = response.lessons;
-      } else if (response.data && Array.isArray(response.data.lessons)) {
-        lessonsData = response.data.lessons;
-      } else if (response.data && Array.isArray(response.data)) {
-        lessonsData = response.data;
-      } else {
-        console.warn("Unexpected response format:", response);
-      }
+      console.log("fetchLessons Response:----------->", response);
 
+      // Expect response format: { success: true, message: string, lessons: TLesson[] }
+      const lessonsData: Lesson[] = response.lessons || [];
       console.log("Parsed lessonsData:", lessonsData);
 
       if (lessonsData.length > 0) {
@@ -190,6 +180,16 @@ const CourseLessons: React.FC = () => {
     setUploadProgress(0);
     setUploadError(null);
     form.resetFields();
+  };
+
+  const handleVideoModalCancel = () => {
+    setIsVideoModalVisible(false);
+    setVideoUrl("");
+  };
+
+  const showVideoModal = (url: string) => {
+    setVideoUrl(url);
+    setIsVideoModalVisible(true);
   };
 
   const handleFileChange = (info: any) => {
@@ -432,13 +432,22 @@ const CourseLessons: React.FC = () => {
                       <Text type="secondary" ellipsis={{ rows: 2 }}>
                         {lesson.description}
                       </Text>
-                      {/* <div style={{ marginTop: 4 }}>{lesson.description}</div> */}
-                      <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                        <Tooltip title="Play video">
+                          <Button
+                            type="link"
+                            icon={<PlayCircleOutlined />}
+                            onClick={() => showVideoModal(lesson.file)}
+                            style={{ padding: 0 }}
+                          >
+                            Watch Lesson Video
+                          </Button>
+                        </Tooltip>
                         <Text
                           type="secondary"
                           style={{ display: "flex", alignItems: "center", gap: 4 }}
                         >
-                          <FileOutlined /> {lesson.file.split("/").pop()}
+                          <FileOutlined /> Video File
                         </Text>
                       </div>
                     </div>
@@ -536,6 +545,21 @@ const CourseLessons: React.FC = () => {
             </Button>
           </div>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Lesson Video"
+        open={isVideoModalVisible}
+        onCancel={handleVideoModalCancel}
+        footer={null}
+        width={800}
+      >
+        <video
+          controls
+          src={videoUrl}
+          style={{ width: "100%", height: "auto" }}
+          onError={(e) => console.error("Video playback error:", e)}
+        />
       </Modal>
     </div>
   );

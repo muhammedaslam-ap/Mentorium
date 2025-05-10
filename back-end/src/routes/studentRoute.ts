@@ -6,6 +6,7 @@ import {
 } from '../middlewares/userAuthMiddleware';
 import { checkUserBlocked } from '../middlewares/checkUserBlocked';
 import { injectedStudentController } from '../di/studentInjection';
+import { injectedCourseController } from '../di/courseInjection';
 
 export class StudentRoutes {
   public router: Router;
@@ -45,7 +46,7 @@ export class StudentRoutes {
           injectedStudentController.studentDetails(req as CustomRequest, res)
       );
     
-
+ 
    
     this.router.put(
       '/editProfile',
@@ -54,6 +55,29 @@ export class StudentRoutes {
       checkUserBlocked,
       (req: Request, res: Response) =>
         injectedStudentController.updateStudentProfile(req as CustomRequest, res)
+    );
+
+    this.router.get(
+      "/all-courses",
+      userAuthMiddleware,
+      authorizeRole(["student"]),
+      checkUserBlocked,
+      (req: Request, res: Response) =>{
+        console.log('hehheehhehehhehhehehe')
+        injectedCourseController.getAllCourses(req as CustomRequest, res)
+      }
+    );
+
+
+    this.router.get(
+      "/courses/:courseId",
+      userAuthMiddleware,
+      authorizeRole(['student']),
+      checkUserBlocked,
+      (req: Request, res: Response) => {
+        console.log(`/student/courses/${req.params.courseId} - User:`, (req as CustomRequest).user);
+        injectedCourseController.getCourseById(req as CustomRequest, res);
+      }
     );
   }
 }

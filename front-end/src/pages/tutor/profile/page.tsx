@@ -31,7 +31,7 @@ interface TutorProfile {
   specialization: string;
   phone: string;
   bio: string;
-  approvalStatus?: string
+  approvalStatus?: string;
   rejectionReason?: string;
   verificationDocUrl?: string;
 }
@@ -53,6 +53,7 @@ export default function TutorProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [profile, setProfile] = useState<TutorProfile>({
     name: "",
     specialization: "",
@@ -68,6 +69,7 @@ export default function TutorProfilePage() {
 
   useEffect(() => {
     let isMounted = true;
+    console.log("useEffect: Fetching tutor profile");
     fetchTutorProfile().catch((error) => {
       if (isMounted) {
         console.error("fetchTutorProfile failed in useEffect:", error);
@@ -85,6 +87,7 @@ export default function TutorProfilePage() {
     setLoading(true);
     try {
       const response: ProfileResponse = await tutorService.getProfile();
+      console.log("fetchTutorProfile response:", response);
       if (response?.profile) {
         const profileData: TutorProfile = {
           name: response.profile.name || "",
@@ -99,11 +102,11 @@ export default function TutorProfilePage() {
         setOriginalProfile(profileData);
         setHasProfile(!!profileData.name);
 
-        // Fetch pre-signed URL if verificationDocUrl exists
         if (profileData.verificationDocUrl) {
           setUrlLoading(true);
           try {
             const url = await tutorService.getDocumentPresignedUrl();
+            console.log("Pre-signed URL fetched:", url);
             setPresignedUrl(url);
           } catch (error) {
             console.error("Failed to fetch pre-signed URL:", error);
@@ -252,17 +255,23 @@ export default function TutorProfilePage() {
     }
   };
 
-  // Extract file name from verificationDocUrl
-
   function getFileName(url: string) {
     const parts = url.split('/');
     return parts[parts.length - 1];
   }
-  
 
-  // Check if the document is an image
   const isImage = () => {
     return profile.verificationDocUrl?.match(/\.(jpeg|jpg|png)$/i);
+  };
+
+  const handleViewDocument = () => {
+    console.log("handleViewDocument: Opening modal, presignedUrl:", presignedUrl);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    console.log("handleCloseModal: Closing modal");
+    setIsModalOpen(false);
   };
 
   if (loading) {
@@ -357,8 +366,8 @@ export default function TutorProfilePage() {
               </Alert>
             )}
 
-            {profile.approvalStatus === "peding" && (
-              <Alert className="mb-6 landscape:mb-8 border-amber-200 bg-amber-50 text-amber-800">
+            {profile.approvalStatus === "pending" && (
+              <Alert className="mb-6 border-amber-200 bg-amber-50 text-amber-800">
                 <Clock className="h-5 w-5 text-amber-600" />
                 <AlertTitle className="text-amber-800 font-medium">Your profile is pending approval</AlertTitle>
                 <AlertDescription className="text-amber-700">
@@ -407,26 +416,25 @@ export default function TutorProfilePage() {
                             <span className="text-violet-900">Tutor</span>
                           </div>
                           <div className="flex justify-between items-center">
-                          <span className="text-violet-700 font-medium">Documents:</span>
-
-                          {urlLoading ? (
-                            <span className="text-violet-900">
-                              <Loader2 className="inline h-4 w-4 animate-spin" /> Loading...
-                            </span>
-                          ) : profile.verificationDocUrl && presignedUrl ? (
-                            <a
-                              href={presignedUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-violet-600 hover:underline"
-                            >
-                              View Document
-                            </a>
-                          ) : (
-                            <span className="text-violet-900">None</span>
-                          )}
-                        </div>
-
+                            <span className="text-violet-700 font-medium">Documents:</span>
+                            {urlLoading ? (
+                              <span className="text-violet-900">
+                                <Loader2 className="inline h-4 w-4 animate-spin" /> Loading...
+                              </span>
+                            ) : profile.verificationDocUrl && presignedUrl ? (
+                              <Button
+                                type="button"
+                                variant="link"
+                                className="text-violet-600 hover:underline p-0 h-auto"
+                                onClick={handleViewDocument}
+                                aria-label="View verification document"
+                              >
+                                View Document
+                              </Button>
+                            ) : (
+                              <span className="text-violet-900">None</span>
+                            )}
+                          </div>
                         </>
                       )}
                       {editMode && !hasProfile && (
@@ -595,6 +603,44 @@ export default function TutorProfilePage() {
                 </Card>
               </div>
             </form>
+
+            {isModalOpen && presignedUrl && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-labelledby="document-modal-title" aria-modal="true">
+                <Card className="bg-white dark:bg-gray-800 max-w-3xl w-full mx-4 max-h-[80vh] overflow-auto border-violet-100 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50 flex justify-between items-center">
+                    <CardTitle id="document-modal-title" className="text-violet-800">
+                      Verification Document
+                    </CardTitle>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleCloseModal}
+                      className="text-violet-600 hover:text-violet-800 p-1"
+                      aria-label="Close document modal"
+                    >
+                      <XCircle className="h-6 w-6" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {isImage() ? (
+                      <img
+                        src={presignedUrl}
+                        alt="Verification document"
+                        className="w-full h-auto max-h-[60vh] object-contain"
+                        onError={() => toast.error("Failed to load document image")}
+                      />
+                    ) : (
+                      <iframe
+                        src={presignedUrl}
+                        title="Verification document"
+                        className="w-full h-[60vh] border-0"
+                        onError={() => toast.error("Failed to load document PDF")}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </main>
       </div>
