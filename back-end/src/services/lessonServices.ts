@@ -22,7 +22,6 @@ export class LessonService implements ILessonService {
     if (!tutorId) throw new Error('Tutor ID is required');
     if (!file) throw new Error('Video file is required');
 
-    // Validate video format
     let newKey: string | undefined;
 
     if (file) {

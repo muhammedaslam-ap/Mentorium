@@ -27,6 +27,8 @@ import { PublicUserRoute } from "@/private/user/publicUserRoute"
 import { ProtectedTutorRoute, ProtectedAdminRoute, ProtectedUserRoute } from "@/private/user/protectedUserRoute"
 import CourseDetails from "./pages/student/courses/courseID/courseID"
 import AllCoursesPage from "./pages/student/courses/page"
+import AddQuizPage from "./pages/tutor/courses/lessons/quiz/add-quiz"
+import EditQuizPage from "./pages/tutor/courses/lessons/quiz/edit-quiz"
 
 function App() {
   return (
@@ -147,6 +149,23 @@ function App() {
               element={
                 <ProtectedTutorRoute>
                   <TutorProfilePage />
+                </ProtectedTutorRoute>
+              }
+            />
+
+             <Route
+              path="/tutor/courses/lessons/quiz/add/:lessonId"
+              element={
+                <ProtectedTutorRoute>
+                  <AddQuizPage />
+                </ProtectedTutorRoute>
+              }
+            />
+            <Route
+              path="/tutor/courses/lessons/quiz/edit/:quizId"
+              element={
+                <ProtectedTutorRoute>
+                  <EditQuizPage />
                 </ProtectedTutorRoute>
               }
             />

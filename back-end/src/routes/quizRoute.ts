@@ -5,13 +5,12 @@ import {
   CustomRequest,
 } from '../middlewares/userAuthMiddleware';
 import { checkUserBlocked } from '../middlewares/checkUserBlocked';
-import { lessonVideoUploadMiddleware } from '../middlewares/S3.uploader';
-import { lessonController } from '../di/lessonInjection';
+import { injectedQuizController } from '../di/quizInjection';
 
 
 
 
-export class LessonRoutes {
+export class QuizRoutes {
   public router: Router;
 
   constructor() {
@@ -21,55 +20,50 @@ export class LessonRoutes {
 
   initializeRoutes() {
     this.router.post(
-      '/courses/:courseId/lessons',
+      '/lesson/:lessonId/quiz',
       userAuthMiddleware,
       authorizeRole(['tutor']),
       checkUserBlocked,
-      lessonVideoUploadMiddleware,
       (req: Request, res: Response) =>
-        lessonController.addLesson(req as CustomRequest, res)
+        injectedQuizController.addQuiz(req as CustomRequest, res)
     );
 
     this.router.get(
-      '/lessons/:lessonId',
+      '/lesson/:quizId',
       userAuthMiddleware,
       authorizeRole(['tutor','student']),
       checkUserBlocked,
       (req: Request, res: Response) =>
-        lessonController.getLesson(req as CustomRequest, res)
+        injectedQuizController.getQuiz(req as CustomRequest, res)
     );
 
-    // Get lessons by course ID
     this.router.get(
-      '/courses/:courseId/lessons',
+      '/lesson/:lessonId/quizId',
       userAuthMiddleware,
       authorizeRole(['tutor','student']),
       checkUserBlocked,
       (req: Request, res: Response) =>
-        lessonController.getLessonsByCourse(req as CustomRequest, res)
+        injectedQuizController.getQuizByLesson(req as CustomRequest, res)
     );
 
-    // Update lesson
     this.router.put(
-      '/lessons/:lessonId',
+      '/quiz/:quizId',
       userAuthMiddleware,
       authorizeRole(['tutor']),
       checkUserBlocked,
-      lessonVideoUploadMiddleware,
       (req: Request, res: Response) =>
-        lessonController.updateLesson(req as CustomRequest, res)
+        injectedQuizController.updateQuiz(req as CustomRequest, res)
     );
 
-    // Delete lesson
     this.router.delete(
-      '/lessons/:lessonId',
+      '/quiz/:quizId',
       userAuthMiddleware,
       authorizeRole(['tutor']),
       checkUserBlocked,
       (req: Request, res: Response) =>
-        lessonController.deleteLesson(req as CustomRequest, res)
+        injectedQuizController.deleteQuiz(req as CustomRequest, res)
     );
   }
 }
 
-export default new LessonRoutes().router;
+export default new QuizRoutes().router;

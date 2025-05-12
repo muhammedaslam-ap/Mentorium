@@ -15,6 +15,7 @@ import {
   InfoCircleOutlined,
   UploadOutlined,
   PlayCircleOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -30,14 +31,17 @@ import {
   Progress,
   Popconfirm,
   Card as AntCard,
+  Select,
 } from "antd";
 import { Card } from "@/components/ui/card";
 import { lessonService } from "@/services/lessonServices/lessonServices";
 import { courseService } from "@/services/courseServices/courseService";
+import { quizService } from "@/services/quizServices/quizServices";
 import { AxiosError } from "axios";
 
 const { TextArea } = Input;
 const { Text } = Typography;
+const { Option } = Select;
 
 interface Lesson {
   _id: string;
@@ -58,12 +62,21 @@ interface UploadFile extends File {
   originFileObj?: File;
 }
 
+interface Quiz {
+  _id: string;
+  question: string;
+  options: string[];
+  answer: string;
+  lesson_id: string;
+}
+
 const CourseLessons: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId;
   const [courseTitle, setCourseTitle] = useState<string>("Course");
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [lessonQuizzes, setLessonQuizzes] = useState<{ [key: string]: Quiz[] }>({});
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -75,6 +88,13 @@ const CourseLessons: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string>("");
+  const [isQuizModalVisible, setIsQuizModalVisible] = useState(false);
+  const [isEditQuizMode, setIsEditQuizMode] = useState(false);
+  const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null);
+  const [quizForm] = Form.useForm();
+  const [isManageQuizzesModalVisible, setIsManageQuizzesModalVisible] = useState(false);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [quizFormReady, setQuizFormReady] = useState(false);
 
   // Debug params to verify courseId
   useEffect(() => {
@@ -97,13 +117,13 @@ const CourseLessons: React.FC = () => {
     }
   };
 
-  // Fetch lessons
+  // Fetch lessons and quizzes
   const fetchLessons = async (id: string) => {
     setLoading(true);
     try {
       console.log("Fetching lessons for courseId:", id);
       const response = await lessonService.getLessonsByCourse(id);
-      console.log("fetchLessons Response:----------->", response);
+      console.log("fetchLessons Response:", response);
 
       // Expect response format: { success: true, message: string, lessons: TLesson[] }
       const lessonsData: Lesson[] = response.lessons || [];
@@ -117,6 +137,19 @@ const CourseLessons: React.FC = () => {
           return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
         });
         setLessons(sortedLessons);
+
+        // Fetch quizzes for each lesson
+        const quizzesMap: { [key: string]: Quiz[] } = {};
+        for (const lesson of sortedLessons) {
+          try {
+            const quizResponse = await quizService.getQuizzesByLessonId(lesson._id);
+            quizzesMap[lesson._id] = quizResponse.quiz || [];
+          } catch (error) {
+            console.error(`Failed to fetch quizzes for lesson ${lesson._id}:`, error);
+            quizzesMap[lesson._id] = [];
+          }
+        }
+        setLessonQuizzes(quizzesMap);
       } else {
         setLessons([]);
       }
@@ -138,7 +171,6 @@ const CourseLessons: React.FC = () => {
 
   // Load course data when courseId changes
   useEffect(() => {
-    // Guard: Ensure courseId is a string
     if (!courseId) {
       toast.error("Invalid course ID");
       setLoading(false);
@@ -223,7 +255,6 @@ const CourseLessons: React.FC = () => {
       toast.error("Please upload a video file");
       return;
     }
-    // Guard: Ensure courseId is a string
     if (!courseId) {
       toast.error("Invalid course ID");
       setUploading(false);
@@ -236,7 +267,7 @@ const CourseLessons: React.FC = () => {
 
     try {
       const formData = new FormData();
-      formData.append("courseId", courseId); // Add courseId to FormData
+      formData.append("courseId", courseId);
       formData.append("title", values.title);
       formData.append("description", values.description);
       if (values.duration) {
@@ -271,7 +302,7 @@ const CourseLessons: React.FC = () => {
         setFileList([]);
         setUploadProgress(0);
         form.resetFields();
-        fetchLessons(courseId); // Refresh lessons after adding
+        fetchLessons(courseId);
         setUploading(false);
       }, 500);
     } catch (error) {
@@ -298,6 +329,123 @@ const CourseLessons: React.FC = () => {
     }
   };
 
+  // Quiz Modal Handlers
+  const showAddQuizModal = (lessonId: string) => {
+    setIsEditQuizMode(false);
+    setCurrentQuiz(null);
+    setSelectedLessonId(lessonId);
+    setQuizFormReady(false);
+    quizForm.resetFields();
+    quizForm.setFieldsValue({
+      question: "",
+      options: ["", "", "", ""],
+      answer: undefined,
+    });
+    setTimeout(() => setQuizFormReady(true), 0);
+    setIsQuizModalVisible(true);
+  };
+
+  const showEditQuizModal = (quiz: Quiz, lessonId: string) => {
+    setIsEditQuizMode(true);
+    setCurrentQuiz(quiz);
+    setSelectedLessonId(lessonId);
+    setQuizFormReady(false);
+    quizForm.resetFields();
+    const options = quiz.options.length === 4 ? quiz.options : [...quiz.options, ...Array(4 - quiz.options.length).fill("")];
+    const answerIndex = quiz.options.findIndex(opt => opt === quiz.answer);
+    quizForm.setFieldsValue({
+      question: quiz.question,
+      options,
+      answer: answerIndex >= 0 ? answerIndex.toString() : undefined,
+    });
+    setTimeout(() => setQuizFormReady(true), 0);
+    setIsQuizModalVisible(true);
+  };
+
+  const handleQuizModalCancel = () => {
+    setIsQuizModalVisible(false);
+    setQuizFormReady(false);
+    quizForm.resetFields();
+    setSelectedLessonId(null);
+  };
+
+  // Manage Quizzes Modal Handlers
+  const showManageQuizzesModal = (lessonId: string) => {
+    setSelectedLessonId(lessonId);
+    setIsManageQuizzesModalVisible(true);
+  };
+
+  const handleManageQuizzesModalCancel = () => {
+    setIsManageQuizzesModalVisible(false);
+    if (!isQuizModalVisible) {
+      setSelectedLessonId(null);
+    }
+  };
+
+  // Quiz Submission
+  const handleQuizSubmit = async (values: any) => {
+    try {
+      const options = values.options.filter((opt: string) => opt.trim() !== "");
+      const answerIndex = parseInt(values.answer, 10);
+      if (isNaN(answerIndex) || answerIndex < 0 || answerIndex >= options.length) {
+        toast.error("Please select a valid correct answer");
+        return;
+      }
+      const quizData = {
+        question: values.question,
+        options,
+        answer: options[answerIndex],
+      };
+
+      let lessonId = selectedLessonId;
+      if (isEditQuizMode && currentQuiz) {
+        await quizService.updateQuiz(currentQuiz._id, quizData);
+        lessonId = lessonId || currentQuiz.lesson_id;
+      } else {
+        if (!lessonId) {
+          toast.error("Invalid lesson ID for adding quiz");
+          return;
+        }
+        await quizService.addQuiz(lessonId, quizData);
+      }
+
+      if (lessonId) {
+        const quizResponse = await quizService.getQuizzesByLessonId(lessonId);
+        setLessonQuizzes(prev => ({
+          ...prev,
+          [lessonId]: quizResponse.quiz || [],
+        }));
+      }
+
+      setIsQuizModalVisible(false);
+      setQuizFormReady(false);
+      quizForm.resetFields();
+      toast.success(`Quiz ${isEditQuizMode ? 'updated' : 'added'} successfully`);
+    } catch (error) {
+      console.error("Error saving quiz:", error);
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message || "Failed to save quiz");
+      }
+    }
+  };
+
+  // Delete Quiz
+  const handleDeleteQuiz = async (quizId: string, lessonId: string) => {
+    try {
+      await quizService.deleteQuiz(quizId);
+      setLessonQuizzes(prev => ({
+        ...prev,
+        [lessonId]: prev[lessonId]?.filter(quiz => quiz._id !== quizId) || [],
+      }));
+      toast.success("Quiz deleted successfully");
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message || "Failed to delete quiz");
+      }
+    }
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return "Unknown duration";
     const minutes = Math.floor(seconds / 60);
@@ -305,7 +453,6 @@ const CourseLessons: React.FC = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  // Render error UI if courseId is invalid
   if (!courseId) {
     return (
       <div style={{ textAlign: "center", padding: 32 }}>
@@ -340,7 +487,7 @@ const CourseLessons: React.FC = () => {
             <h1 style={{ fontSize: 24, fontWeight: "bold", color: "#1d39c4" }}>
               Lessons for: {courseTitle}
             </h1>
-            <p style={{ color: "#595959" }}>Manage your course lessons</p>
+            <p style={{ color: "#595959" }}>Manage your course lessons and quizzes</p>
           </div>
           <Button type="primary" icon={<PlusOutlined />} onClick={showAddModal}>
             Add New Lesson
@@ -391,6 +538,27 @@ const CourseLessons: React.FC = () => {
                       Delete
                     </Button>
                   </Popconfirm>,
+                  lessonQuizzes[lesson._id]?.length > 0 ? (
+                    <Button
+                      key="manage-quizzes"
+                      type="primary"
+                      icon={<QuestionCircleOutlined />}
+                      onClick={() => showManageQuizzesModal(lesson._id)}
+                      style={{ backgroundColor: "#722ed1", borderColor: "#722ed1" }}
+                    >
+                      Manage Quizzes
+                    </Button>
+                  ) : (
+                    <Button
+                      key="add-quiz"
+                      type="primary"
+                      icon={<QuestionCircleOutlined />}
+                      onClick={() => showAddQuizModal(lesson._id)}
+                      style={{ backgroundColor: "#722ed1", borderColor: "#722ed1" }}
+                    >
+                      Add Quiz
+                    </Button>
+                  ),
                 ]}
               >
                 <List.Item.Meta
@@ -560,6 +728,127 @@ const CourseLessons: React.FC = () => {
           style={{ width: "100%", height: "auto" }}
           onError={(e) => console.error("Video playback error:", e)}
         />
+      </Modal>
+
+      <Modal
+        title={isEditQuizMode ? "Edit Quiz" : "Add New Quiz"}
+        open={isQuizModalVisible}
+        onCancel={handleQuizModalCancel}
+        footer={null}
+        width={700}
+        destroyOnClose
+      >
+        <Form form={quizForm} layout="vertical" onFinish={handleQuizSubmit}>
+          <Form.Item
+            name="question"
+            label="Quiz Question"
+            rules={[{ required: true, message: "Please enter a quiz question" }]}
+          >
+            <Input placeholder="Enter quiz question" />
+          </Form.Item>
+          <Form.Item label="Options">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Form.Item
+                key={index}
+                name={["options", index]}
+                rules={[{ required: true, message: `Please enter option ${index + 1}` }]}
+                noStyle
+              >
+                <Input
+                  placeholder={`Option ${index + 1}`}
+                  style={{ marginBottom: 8 }}
+                  onChange={() => {
+                    quizForm.setFieldsValue({ answer: undefined });
+                  }}
+                />
+              </Form.Item>
+            ))}
+          </Form.Item>
+          <Form.Item
+            name="answer"
+            label="Correct Answer"
+            rules={[{ required: true, message: "Please select the correct answer" }]}
+          >
+            {quizFormReady && quizForm.getFieldValue("options")?.length === 4 ? (
+              <Select placeholder="Select correct answer">
+                {quizForm.getFieldValue("options").map((option: string, index: number) => (
+                  <Option key={index} value={index.toString()}>
+                    {option || `Option ${index + 1}`}
+                  </Option>
+                ))}
+              </Select>
+            ) : (
+              <Select placeholder="Enter options first" disabled />
+            )}
+          </Form.Item>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+            <Button onClick={handleQuizModalCancel}>Cancel</Button>
+            <Button type="primary" htmlType="submit" disabled={!quizFormReady}>
+              {isEditQuizMode ? "Update Quiz" : "Add Quiz"}
+            </Button>
+          </div>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Manage Quizzes"
+        open={isManageQuizzesModalVisible}
+        onCancel={handleManageQuizzesModalCancel}
+        footer={null}
+        width={700}
+        destroyOnClose
+      >
+        {selectedLessonId && lessonQuizzes[selectedLessonId]?.length > 0 ? (
+          <List
+            dataSource={lessonQuizzes[selectedLessonId]}
+            renderItem={(quiz) => (
+              <List.Item
+                actions={[
+                  <Button
+                    key="edit"
+                    icon={<EditOutlined />}
+                    onClick={() => {
+                      showEditQuizModal(quiz, selectedLessonId!);
+                    }}
+                  >
+                    Edit
+                  </Button>,
+                  <Popconfirm
+                    key="delete"
+                    title="Delete this quiz?"
+                    description="This action cannot be undone."
+                    onConfirm={() => handleDeleteQuiz(quiz._id, selectedLessonId!)}
+                    okText="Delete"
+                    cancelText="Cancel"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button danger icon={<DeleteOutlined />}>
+                      Delete
+                    </Button>
+                  </Popconfirm>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={quiz.question}
+                  description={`Correct Answer: ${quiz.answer}`}
+                />
+              </List.Item>
+            )}
+          />
+        ) : (
+          <div style={{ textAlign: "center", padding: 16 }}>
+            <p>No quizzes found for this lesson.</p>
+            <Button
+              type="primary"
+              onClick={() => {
+                showAddQuizModal(selectedLessonId!);
+                handleManageQuizzesModalCancel();
+              }}
+            >
+              Add Quiz
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   );

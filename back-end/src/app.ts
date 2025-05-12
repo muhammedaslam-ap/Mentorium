@@ -15,6 +15,7 @@ import { CourseRoutes } from "./routes/courseRoute";
 import { TutorRoutes } from "./routes/tutorRoute";
 import  LessonRoutes  from "./routes/lessonRoute";
 import { StudentRoutes } from "./routes/studentRoute";
+import { QuizRoutes } from "./routes/quizRoute";
 
 connectDB();
 const app = express();
@@ -50,6 +51,8 @@ try {
   app.use("/tutor",new TutorRoutes().router); 
   app.use("/student", new StudentRoutes().router)
   app.use("/tutor",LessonRoutes);
+  app.use("/quiz", new QuizRoutes().router)
+
 
 
 } catch (error) {
