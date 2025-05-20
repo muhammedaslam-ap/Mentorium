@@ -1,32 +1,22 @@
 import { authAxiosInstance } from "@/api/authAxiosInstance"
 import { toast } from "sonner"
 
-/**
- * Interface for student profile data
- */
+
 export interface StudentProfile {
   education?: string
   aboutMe?: string
   interests?: string
 }
 
-/**
- * Interface for profile response from API
- */
 export interface ProfileResponse {
   success?: boolean
   profile?: StudentProfile | null
   message?: string
 }
 
-/**
- * Service for handling student-related API calls
- */
+
 export const studentService = {
-  /**
-   * Get student profile information
-   * @returns Promise with profile data
-   */
+
   async getProfile(): Promise<ProfileResponse> {
     try {
       const response = await authAxiosInstance.get("/student/profile")
@@ -34,16 +24,11 @@ export const studentService = {
       return response.data
     } catch (error: any) {
       console.error("getProfile error:", error.response?.data || error.message)
-      // Don't throw error, just return empty response
       return { success: false, profile: null, message: error?.response?.data?.message || "Unable to fetch profile" }
     }
   },
 
-  /**
-   * Create a new student profile
-   * @param profileData Profile data to create
-   * @returns Promise with created profile
-   */
+
   async createProfile(profileData: StudentProfile) {
     try {
       console.log("createProfile request:", profileData)
@@ -58,11 +43,7 @@ export const studentService = {
     }
   },
 
-  /**
-   * Update an existing student profile
-   * @param profileData Profile data to update
-   * @returns Promise with updated profile
-   */
+
   async updateProfile(profileData: StudentProfile) {
     try {
       console.log("updateProfile request:", profileData)
@@ -77,10 +58,7 @@ export const studentService = {
     }
   },
 
-  /**
-   * Log out student user
-   * @returns Promise indicating success
-   */
+
   async logoutStudent() {
     try {
       const response = await authAxiosInstance.post("/auth/logout")
@@ -94,10 +72,7 @@ export const studentService = {
     }
   },
 
-  /**
-   * Get student details
-   * @returns Promise with student details
-   */
+
   async studentDetails() {
     try {
       const response = await authAxiosInstance.get("/student/details")

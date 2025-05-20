@@ -97,7 +97,6 @@ export class CourseController {
       console.log('here is the tutor id in service', tutor.id)
   
       const { courses, totalCourses } = await this._courseService.getTutorCourses(tutor.id, page, limit);
-      // console.log("herererererer3rererererer",courses,totalCourses)
   
       const updatedCourses = courses
         ? await Promise.all(

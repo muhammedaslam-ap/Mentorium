@@ -33,6 +33,18 @@ export class LessonService implements ILessonService {
           throw new Error('Only MP4, WebM, or OGG videos are supported');
         }
     }
+
+
+
+    const coursedatas  = await lessonModel.find({courseId:lessonData.courseId})
+    const alreadyExisted = coursedatas.filter((curr)=> {
+       return curr.order === lessonData.order
+    })
+    if(alreadyExisted.length>0){
+      throw new Error('this lesson order is already existed')
+    }
+
+
     const course = await courseModel.findById(lessonData.courseId);
     if (!course) throw new Error('Course not found');
     if (course.tutorId.toString() !== tutorId) throw new Error('Unauthorized: You do not own this course');
@@ -61,7 +73,6 @@ export class LessonService implements ILessonService {
       await this.lessonRepository.createLesson(lessonInput);
       console.log(`Lesson created for courseId: ${lessonData.courseId}`);
 
-      // Fetch the created lesson directly
       const createdLesson = await lessonModel
         .findOne({
           courseId: lessonData.courseId,

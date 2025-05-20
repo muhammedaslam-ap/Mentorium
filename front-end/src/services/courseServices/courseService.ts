@@ -2,6 +2,21 @@ import { authAxiosInstance } from "@/api/authAxiosInstance"
 import { AxiosError } from "axios"
 import { toast } from "sonner"
 
+export interface Course {
+  _id: string
+  title: string
+  tagline: string
+  category: string
+  difficulty: string
+  price: number
+  about: string
+  thumbnail: string
+  enrollments?: number
+  createdAt?: string
+  tutorId?: string
+  tutorName?: string
+}
+
 export const courseService = {
   async getCourseDetails(courseId: string) {
     try {
@@ -19,7 +34,7 @@ export const courseService = {
           error.response?.data?.message ||
           (error.request ? "Network error: Unable to connect to the server" : "Failed to load course details")
         toast.error(message)
-        return null // Returning null on error
+        return null 
       } else {
         console.error("Unexpected error:", error)
         toast.error("An unexpected error occurred")

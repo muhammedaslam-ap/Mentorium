@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   User,
-  BookOpen,
   Edit,
   Save,
   Loader2,
@@ -11,9 +10,9 @@ import {
   Clock,
   AlertTriangle,
   GraduationCap,
-  Upload,
   FileText,
   Phone,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +65,91 @@ export default function TutorProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [presignedUrl, setPresignedUrl] = useState<string | null>(null);
   const [urlLoading, setUrlLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    specialization?: string;
+    phone?: string;
+    bio?: string;
+    document?: string;
+  }>({});
+  const [removeDocument, setRemoveDocument] = useState(false);
+
+  const validatePhoneNumber = (phone: string): boolean => {
+    const cleaned = phone.replace(/[\s\(\)-+]/g, '');
+    const isNumeric = /^\d+$/.test(cleaned);
+    const isValidLength = cleaned.length >= 10 && cleaned.length <= 15;
+    return isNumeric && isValidLength;
+  };
+
+  const validateForm = () => {
+    const errors: { name?: string; specialization?: string; phone?: string; bio?: string; document?: string } = {};
+
+    if (!profile.name.trim()) {
+      errors.name = "Full name is required";
+    } else if (profile.name.trim().length < 2) {
+      errors.name = "Full name must be at least 2 characters long";
+    } else if (profile.name.trim().length > 100) {
+      errors.name = "Full name must not exceed 100 characters";
+    }
+
+    const specializations = profile.specialization
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s);
+    if (specializations.length === 0) {
+      errors.specialization = "At least one specialization is required";
+    } else if (profile.specialization.length > 100) {
+      errors.specialization = "Total specialization must not exceed 100 characters";
+    } else {
+      const invalidSpec = specializations.find((s) => s.length < 2 || s.length > 100);
+      if (invalidSpec) {
+        errors.specialization = "Each specialization must be 2-100 characters";
+      }
+    }
+
+    if (!profile.phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!validatePhoneNumber(profile.phone)) {
+      errors.phone = "Invalid phone number. Use 10-15 digits.";
+    }
+
+    if (profile.bio.trim().length > 1000) {
+      errors.bio = "Bio must not exceed 1000 characters";
+    }
+
+    if (!hasProfile && !selectedFile) {
+      errors.document = "Please upload a verification document";
+    } else if (hasProfile && removeDocument && !selectedFile) {
+      errors.document = "Please upload a new document after removing the existing one";
+    }
+
+    setFormErrors(errors);
+    console.log("Validation errors:", errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const renderSpecializationChips = (specialization: string) => {
+    const specializations = specialization
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s);
+    console.log("Rendering chips for:", specializations);
+    return specializations.length > 0 ? (
+      <div className="flex flex-wrap gap-2">
+        {specializations.map((spec, index) => (
+          <Badge
+            key={index}
+            className="bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200"
+          >
+            {spec}
+          </Badge>
+        ))}
+      </div>
+    ) : (
+      <span className="text-violet-600">Your Specialization</span>
+    );
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +167,15 @@ export default function TutorProfilePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (editMode) {
+      validateForm();
+    } else {
+      setFormErrors({});
+    }
+    console.log("removeDocument state:", removeDocument);
+  }, [profile, selectedFile, removeDocument, editMode]);
+
   const fetchTutorProfile = async () => {
     setLoading(true);
     try {
@@ -90,23 +183,26 @@ export default function TutorProfilePage() {
       console.log("fetchTutorProfile response:", response);
       if (response?.profile) {
         const profileData: TutorProfile = {
-          name: response.profile.name || "",
-          specialization: response.profile.specialization || "",
-          phone: response.profile.phone || "",
-          bio: response.profile.bio || "",
+          name: response.profile.name ?? "",
+          specialization: response.profile.specialization ?? "",
+          phone: response.profile.phone ?? "",
+          bio: response.profile.bio ?? "",
           approvalStatus: response.profile.approvalStatus ?? "",
-          rejectionReason: response.profile.rejectionReason || "",
-          verificationDocUrl: response.profile.verificationDocUrl || "",
+          rejectionReason: response.profile.rejectionReason ?? "",
+          verificationDocUrl: response.profile.verificationDocUrl ?? "",
         };
+        console.log("Profile data:", profileData);
+        console.log("verificationDocUrl:", profileData.verificationDocUrl);
         setProfile(profileData);
         setOriginalProfile(profileData);
         setHasProfile(!!profileData.name);
+        setRemoveDocument(false); 
 
         if (profileData.verificationDocUrl) {
           setUrlLoading(true);
           try {
             const url = await tutorService.getDocumentPresignedUrl();
-            console.log("Pre-signed URL fetched:", url);
+            console.log("Presigned URL:", url);
             setPresignedUrl(url);
           } catch (error) {
             console.error("Failed to fetch pre-signed URL:", error);
@@ -126,6 +222,7 @@ export default function TutorProfilePage() {
           rejectionReason: "",
           verificationDocUrl: "",
         });
+        setRemoveDocument(false);
       }
     } catch (error: any) {
       console.error("Failed to fetch tutor profile:", error);
@@ -140,6 +237,7 @@ export default function TutorProfilePage() {
         rejectionReason: "",
         verificationDocUrl: "",
       });
+      setRemoveDocument(false);
     } finally {
       setLoading(false);
     }
@@ -148,52 +246,66 @@ export default function TutorProfilePage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setProfile((prev) => ({ ...prev, [name]: value }));
+    setFormErrors((prev) => ({ ...prev, [name]: undefined }));
+    if (name === "phone") {
+      if (value.trim() && !validatePhoneNumber(value)) {
+        setPhoneError("Invalid phone number. Use 10-15 digits.");
+      } else {
+        setPhoneError(null);
+      }
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 5 * 1024 * 1024; 
       if (file.size > maxSize) {
         toast.error("File size exceeds 5MB limit");
+        setFormErrors((prev) => ({ ...prev, document: "File size exceeds 5MB limit" }));
         return;
       }
       if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
         toast.error("Invalid file type. Please upload PDF, JPG, or PNG");
+        setFormErrors((prev) => ({ ...prev, document: "Invalid file type. Please upload PDF, JPG, or PNG" }));
         return;
       }
       setSelectedFile(file);
+      setRemoveDocument(false);
+      setFormErrors((prev) => ({ ...prev, document: undefined }));
     }
+  };
+
+  const handleRemoveDocument = () => {
+    setSelectedFile(null);
+    setRemoveDocument(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setFormErrors((prev) => ({ ...prev, document: undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile.name.trim()) {
-      toast.error("Full name is required");
-      return;
-    }
-    if (!profile.specialization.trim()) {
-      toast.error("Specialization is required");
-      return;
-    }
-    if (!profile.phone.trim()) {
-      toast.error("Phone number is required");
-      return;
-    }
-    if (!hasProfile && !selectedFile) {
-      toast.error("Please upload a verification document");
+
+    if (!validateForm()) {
+      toast.error("Please fix the errors in the form");
       return;
     }
 
     setSaving(true);
     try {
       if (hasProfile) {
-        await tutorService.updateProfile({
-          name: profile.name,
-          specialization: profile.specialization,
-          phone: profile.phone,
-          bio: profile.bio,
-        });
+        await tutorService.updateProfile(
+          {
+            name: profile.name,
+            specialization: profile.specialization,
+            phone: profile.phone,
+            bio: profile.bio,
+          },
+          selectedFile,
+          removeDocument
+        );
         toast.success("Profile updated successfully");
       } else {
         await tutorService.createProfile(
@@ -203,17 +315,19 @@ export default function TutorProfilePage() {
             phone: profile.phone,
             bio: profile.bio,
           },
-          selectedFile
+          selectedFile!
         );
         setHasProfile(true);
         toast.success("Profile created successfully");
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
+      }
+      setSelectedFile(null);
+      setRemoveDocument(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
       await fetchTutorProfile();
       setEditMode(false);
+      setFormErrors({});
     } catch (error: any) {
       console.error("Failed to save profile:", error);
       toast.error(error?.message || "Failed to save profile");
@@ -227,10 +341,13 @@ export default function TutorProfilePage() {
       setProfile(originalProfile);
     }
     setSelectedFile(null);
+    setRemoveDocument(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
     setEditMode(false);
+    setPhoneError(null);
+    setFormErrors({});
   };
 
   const getStatusBadge = () => {
@@ -256,8 +373,9 @@ export default function TutorProfilePage() {
   };
 
   function getFileName(url: string) {
+    if (!url) return "Unknown Document";
     const parts = url.split('/');
-    return parts[parts.length - 1];
+    return parts[parts.length - 1] || "Unknown Document";
   }
 
   const isImage = () => {
@@ -361,7 +479,6 @@ export default function TutorProfilePage() {
                 <AlertTitle className="text-red-800 font-medium">Your profile verification was rejected</AlertTitle>
                 <AlertDescription className="text-red-700">
                   Reason: {profile.rejectionReason}
-                  <div className="mt-2">Please update your information and resubmit for verification.</div>
                 </AlertDescription>
               </Alert>
             )}
@@ -394,9 +511,9 @@ export default function TutorProfilePage() {
                       </AvatarFallback>
                     </Avatar>
                     <h2 className="mt-4 text-xl font-bold text-violet-900">{profile.name || "Your Name"}</h2>
-                    <p className="text-violet-600">{profile.specialization || "Your Specialization"}</p>
+                    {renderSpecializationChips(profile.specialization)}
 
-                    <Separator className="my-6 bg-violet-100" />
+                    <Separator className="my-6 bg-violet-200" />
 
                     <div className="w-full space-y-4">
                       {hasProfile && (
@@ -421,7 +538,7 @@ export default function TutorProfilePage() {
                               <span className="text-violet-900">
                                 <Loader2 className="inline h-4 w-4 animate-spin" /> Loading...
                               </span>
-                            ) : profile.verificationDocUrl && presignedUrl ? (
+                            ) : profile.verificationDocUrl && !removeDocument ? (
                               <Button
                                 type="button"
                                 variant="link"
@@ -473,13 +590,18 @@ export default function TutorProfilePage() {
                           value={profile.name}
                           onChange={handleInputChange}
                           placeholder="Your full name"
-                          className="pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400"
+                          className={`pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400 ${formErrors.name ? "border-red-500" : ""}`}
                           disabled={!editMode}
                           required
                           aria-required="true"
                           aria-describedby="name-error"
                         />
                       </div>
+                      {formErrors.name && (
+                        <p id="name-error" className="text-xs text-red-500">
+                          {formErrors.name}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -493,14 +615,24 @@ export default function TutorProfilePage() {
                           name="specialization"
                           value={profile.specialization}
                           onChange={handleInputChange}
-                          placeholder="e.g., Mathematics, Computer Science, Physics"
-                          className="pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400"
+                          placeholder="e.g., Mathematics, Physics, Computer Science"
+                          className={`pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400 ${formErrors.specialization ? "border-red-500" : ""}`}
                           disabled={!editMode}
                           required
                           aria-required="true"
                           aria-describedby="specialization-error"
                         />
                       </div>
+                      {editMode && (
+                        <div className="mt-2">
+                          {renderSpecializationChips(profile.specialization)}
+                        </div>
+                      )}
+                      {formErrors.specialization && (
+                        <p id="specialization-error" className="text-xs text-red-500">
+                          {formErrors.specialization}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -514,14 +646,19 @@ export default function TutorProfilePage() {
                           name="phone"
                           value={profile.phone}
                           onChange={handleInputChange}
-                          placeholder="Your phone number"
-                          className="pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400"
+                          placeholder="Your phone number (e.g., +1-123-456-7890)"
+                          className={`pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400 ${formErrors.phone || phoneError ? "border-red-500" : ""}`}
                           disabled={!editMode}
                           required
                           aria-required="true"
                           aria-describedby="phone-error"
                         />
                       </div>
+                      {(formErrors.phone || phoneError) && (
+                        <p id="phone-error" className="text-xs text-red-500">
+                          {formErrors.phone || phoneError}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -534,7 +671,7 @@ export default function TutorProfilePage() {
                         value={profile.bio}
                         onChange={handleInputChange}
                         placeholder="Tell students about your background, experience, and teaching style..."
-                        className="min-h-[150px] border-violet-200 focus:border-violet-400 focus:ring-violet-400"
+                        className={`min-h-[150px] border-violet-200 focus:border-violet-400 focus:ring-violet-400 ${formErrors.bio ? "border-red-500" : ""}`}
                         disabled={!editMode}
                         aria-describedby="bio-error"
                       />
@@ -543,33 +680,77 @@ export default function TutorProfilePage() {
                           A compelling bio helps students understand your expertise and teaching approach.
                         </p>
                       )}
+                      {formErrors.bio && (
+                        <p id="bio-error" className="text-xs text-red-500">
+                          {formErrors.bio}
+                        </p>
+                      )}
                     </div>
 
-                    {editMode && (
-                      <div className="space-y-2">
-                        <Label htmlFor="document-upload" className="text-violet-700">
-                          Verification Document (Required)
-                        </Label>
-                        <Input
-                          id="document-upload"
-                          type="file"
-                          onChange={handleFileChange}
-                          ref={fileInputRef}
-                          className="border-violet-200 focus:border-violet-400 focus:ring-violet-400"
-                          disabled={saving}
-                          aria-describedby="document-upload-error"
-                        />
-                        <p className="text-xs text-violet-500">
-                          Accepted formats: PDF, JPG, PNG. Maximum size: 5MB.
+                    <div className="space-y-2">
+                      <Label htmlFor="document-upload" className="text-violet-700">
+                        Verification Document 
+                      </Label>
+
+                      {editMode && hasProfile && profile.verificationDocUrl && !removeDocument ? (
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-violet-500" />
+                          <span className="text-sm text-violet-600">{getFileName(profile.verificationDocUrl)}</span>
+                          {presignedUrl && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              className="text-violet-600 hover:underline p-0 h-auto"
+                              onClick={handleViewDocument}
+                              aria-label="View current verification document"
+                            >
+                              View
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="text-red-500 hover:text-red-700 p-0 h-auto"
+                            onClick={handleRemoveDocument}
+                            aria-label="Remove current verification document"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : editMode && hasProfile && !profile.verificationDocUrl && !removeDocument ? (
+                        <p className="text-sm text-violet-600">No document uploaded.</p>
+                      ) : null}
+                      {editMode && (
+                        <>
+                          <Input
+                            id="document-upload"
+                            type="file"
+                            onChange={handleFileChange}
+                            ref={fileInputRef}
+                            className={`border-violet-200 focus:border-violet-400 focus:ring-violet-400 ${formErrors.document ? "border-red-500" : ""}`}
+                            disabled={saving}
+                            aria-describedby="document-upload-error"
+                          />
+                          <p className="text-xs text-violet-500">
+                            Accepted formats: PDF, JPG, PNG. Maximum size: 5MB.
+                          </p>
+                        </>
+                      )}
+                      {selectedFile && (
+                        <p className="text-sm text-violet-600">Selected file: {selectedFile.name}</p>
+                      )}
+                      {removeDocument && !selectedFile && (
+                        <p className="text-sm text-violet-600">Current document removed. Please upload a new one.</p>
+                      )}
+                      {formErrors.document && (
+                        <p id="document-upload-error" className="text-xs text-red-500">
+                          {formErrors.document}
                         </p>
-                        {selectedFile && (
-                          <p className="text-sm text-violet-600">Selected file: {selectedFile.name}</p>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </CardContent>
                   {editMode && (
-                    <CardFooter className="border-t border-violet-100 bg-gradient-to-r from-violet-50 to-purple-50 flex justify-end space-x-4">
+                    <CardFooter className="border-t border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 flex justify-end space-x-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -583,7 +764,7 @@ export default function TutorProfilePage() {
                       <Button
                         type="submit"
                         className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
-                        disabled={saving}
+                        disabled={saving || !!Object.keys(formErrors).length}
                         aria-label={hasProfile ? "Save profile changes" : "Create profile"}
                       >
                         {saving ? (

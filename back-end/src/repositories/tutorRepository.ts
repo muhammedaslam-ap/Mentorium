@@ -3,6 +3,8 @@ import { ITutorRepository } from "../interfaces/repositoryInterface/ItutorReposi
 import { ITutorProfile, tutorProfileModel } from "../models/tutorProfileModel";
 import { userModel } from "../models/userModel";
 import { TTutorModel, TTutorProfileInput } from "../types/tutor";
+import { TNotification } from "../types/notification";
+import { NotificationModel } from "../models/notificationModel";
 
 export class TutorRepository implements ITutorRepository {
   async createTutorProfile(
@@ -99,4 +101,17 @@ export class TutorRepository implements ITutorRepository {
       rejectionReason: tutorData.tutorProfile?.rejectionReason || "",
     };
   }
+
+    async markAllNotificationsAsRead(id: string): Promise<void> {
+    await NotificationModel.updateMany(
+      { userId: id },
+      { $set: { read: true } }
+    );
+  }
+
+    async getNotifications(id: string): Promise<TNotification[] | null> {
+    const notification = await NotificationModel.find({ userId: id });
+    return notification as TNotification[];
+  }
+  
 }

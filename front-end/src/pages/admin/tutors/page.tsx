@@ -24,7 +24,6 @@ import { useNavigate } from "react-router-dom";
 
 import { toast } from "sonner"
 
-// Define the Tutor interface based on the API response
 interface Tutor {
   _id: string
   name: string
@@ -53,7 +52,6 @@ export default function TutorsManagement() {
   })
   const [rowsPerPage, setRowsPerPage] = useState(10)
 
-  // Dialog states
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState("")
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null)
@@ -260,7 +258,7 @@ export default function TutorsManagement() {
                   <TableHead className="text-violet-900">Name</TableHead>
                   <TableHead className="text-violet-900">Email</TableHead>
                   <TableHead className="text-violet-900">Status</TableHead>
-                  <TableHead className="text-violet-900">Joined</TableHead>
+                  {/* <TableHead className="text-violet-900">Joined</TableHead> */}
                   <TableHead className="text-violet-900">Approve/Reject</TableHead>
                   <TableHead className="text-violet-900">Actions</TableHead>
                 </TableRow>
@@ -305,9 +303,9 @@ export default function TutorsManagement() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-violet-600">
+                      {/* <TableCell className="text-violet-600">
                         {new Date(tutor.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell>
                       <div className="flex space-x-2">
                         {tutor.approvalStatus === 'pending' && (

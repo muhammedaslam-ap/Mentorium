@@ -103,7 +103,7 @@ export default function AdminLogin() {
                 </div>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <Label htmlFor="password" className="text-violet-700">
                     Password
                   </Label>
@@ -113,7 +113,7 @@ export default function AdminLogin() {
                   >
                     Forgot password?
                   </Link>
-                </div>
+                </div> */}
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-violet-500" />
                   <Input

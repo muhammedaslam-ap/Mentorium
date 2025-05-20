@@ -1,0 +1,7 @@
+{"allowedHeaders":["Content-Type","Authorization"],"credentials":true,"level":"info","message":"Initializing Socket.IO with CORS options:","methods":["GET","POST","OPTIONS","PATCH","PUT","DELETE"],"optionsSuccessStatus":204,"origin":"http://localhost:5173","timestamp":"2025-05-20T14:27:36.113Z"}
+{"allowedHeaders":["Content-Type","Authorization"],"credentials":true,"level":"info","message":"Initializing Socket.IO with CORS options:","methods":["GET","POST","OPTIONS","PATCH","PUT","DELETE"],"optionsSuccessStatus":204,"origin":"http://localhost:5173","timestamp":"2025-05-20T15:24:19.281Z"}
+{"allowedHeaders":["Content-Type","Authorization"],"credentials":true,"level":"info","message":"Initializing Socket.IO with CORS options:","methods":["GET","POST","OPTIONS","PATCH","PUT","DELETE"],"optionsSuccessStatus":204,"origin":["http://localhost:5173"],"timestamp":"2025-05-20T15:25:01.241Z"}
+{"clientOrigin":"http://localhost:5173","hasToken":false,"level":"info","message":"Socket authentication attempt","socketId":"NQjXlAYqL-H32wYRAAAB","timestamp":"2025-05-20T15:38:02.051Z"}
+{"level":"error","message":"Authentication failed: No token provided","socketId":"NQjXlAYqL-H32wYRAAAB","timestamp":"2025-05-20T15:38:02.145Z"}
+{"clientOrigin":"http://localhost:5173","hasToken":false,"level":"info","message":"Socket authentication attempt","socketId":"_KGD4MWNWi4g84JSAAAD","timestamp":"2025-05-20T15:40:16.476Z"}
+{"level":"error","message":"Authentication failed: No token provided","socketId":"_KGD4MWNWi4g84JSAAAD","timestamp":"2025-05-20T15:40:16.483Z"}

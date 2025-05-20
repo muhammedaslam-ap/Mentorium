@@ -95,6 +95,7 @@ const CourseLessons: React.FC = () => {
   const [isManageQuizzesModalVisible, setIsManageQuizzesModalVisible] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [quizFormReady, setQuizFormReady] = useState(false);
+  const [removeVideo, setRemoveVideo] = useState(false);
 
   // Debug params to verify courseId
   useEffect(() => {
@@ -187,6 +188,7 @@ const CourseLessons: React.FC = () => {
     setFileList([]);
     setUploadProgress(0);
     setUploadError(null);
+    setRemoveVideo(false);
     form.resetFields();
     setIsModalVisible(true);
   };
@@ -197,6 +199,7 @@ const CourseLessons: React.FC = () => {
     setFileList([]);
     setUploadProgress(0);
     setUploadError(null);
+    setRemoveVideo(false);
     form.setFieldsValue({
       title: lesson.title,
       description: lesson.description,
@@ -211,6 +214,7 @@ const CourseLessons: React.FC = () => {
     setFileList([]);
     setUploadProgress(0);
     setUploadError(null);
+    setRemoveVideo(false);
     form.resetFields();
   };
 
@@ -234,6 +238,7 @@ const CourseLessons: React.FC = () => {
       return file;
     });
     setFileList(fileList);
+    setRemoveVideo(false); // Reset removeVideo when a new file is selected
   };
 
   const beforeUpload = (file: File) => {
@@ -250,9 +255,18 @@ const CourseLessons: React.FC = () => {
     return false;
   };
 
+  const handleRemoveVideo = () => {
+    setRemoveVideo(true);
+    setFileList([]);
+  };
+
   const handleSubmit = async (values: any) => {
-    if (fileList.length === 0 && !isEditMode) {
+    if (!isEditMode && fileList.length === 0) {
       toast.error("Please upload a video file");
+      return;
+    }
+    if (isEditMode && fileList.length === 0 && removeVideo) {
+      toast.error("Please upload a new video file after removing the existing one");
       return;
     }
     if (!courseId) {
@@ -279,6 +293,9 @@ const CourseLessons: React.FC = () => {
       if (fileList.length > 0 && fileList[0].originFileObj) {
         formData.append("video", fileList[0].originFileObj);
       }
+      if (isEditMode && removeVideo) {
+        formData.append("removeVideo", "true");
+      }
 
       console.log("Submitting lesson with courseId:", courseId, "FormData:", Array.from(formData.entries()));
       const progressInterval = setInterval(() => {
@@ -301,6 +318,7 @@ const CourseLessons: React.FC = () => {
         setIsModalVisible(false);
         setFileList([]);
         setUploadProgress(0);
+        setRemoveVideo(false);
         form.resetFields();
         fetchLessons(courseId);
         setUploading(false);
@@ -671,14 +689,38 @@ const CourseLessons: React.FC = () => {
               <InputNumber min={1} placeholder="Lesson order" style={{ width: "100%" }} />
             </Form.Item>
           </div>
+          {isEditMode && currentLesson?.file && !removeVideo && (
+            <Form.Item label="Current Video">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Button
+                  type="link"
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => showVideoModal(currentLesson.file)}
+                  style={{ padding: 0 }}
+                >
+                  Preview Current Video
+                </Button>
+                <Button
+                  type="link"
+                  icon={<DeleteOutlined />}
+                  onClick={handleRemoveVideo}
+                  style={{ padding: 0, color: "#ff4d4f" }}
+                >
+                  Remove
+                </Button>
+              </div>
+            </Form.Item>
+          )}
           <Form.Item
             label="Video File"
-            required={!isEditMode}
+            required={!isEditMode || removeVideo}
             tooltip={
               isEditMode
                 ? "Upload a new video file only if you want to replace the existing one"
                 : "Upload a video file for this lesson"
             }
+            validateStatus={removeVideo && fileList.length === 0 ? "error" : undefined}
+            help={removeVideo && fileList.length === 0 ? "Please upload a new video file" : undefined}
           >
             <Upload
               beforeUpload={beforeUpload}
@@ -726,7 +768,10 @@ const CourseLessons: React.FC = () => {
           controls
           src={videoUrl}
           style={{ width: "100%", height: "auto" }}
-          onError={(e) => console.error("Video playback error:", e)}
+          onError={(e) => {
+            console.error("Video playback error:", e);
+            toast.error("Failed to load video. Please check the file URL.");
+          }}
         />
       </Modal>
 
@@ -767,7 +812,8 @@ const CourseLessons: React.FC = () => {
           <Form.Item
             name="answer"
             label="Correct Answer"
-            rules={[{ required: true, message: "Please select the correct answer" }]}
+            rules={[{ required: true,
+            message: "Please select the correct answer" }]}
           >
             {quizFormReady && quizForm.getFieldValue("options")?.length === 4 ? (
               <Select placeholder="Select correct answer">

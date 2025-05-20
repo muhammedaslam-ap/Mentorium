@@ -1,4 +1,3 @@
-// src/repositories/baseRepository.ts
 import { Model, Document, Types } from "mongoose";
 
 export class BaseRepository<TDoc extends Document, TCreate = Partial<Omit<TDoc, keyof Document>>> {
@@ -18,13 +17,13 @@ export class BaseRepository<TDoc extends Document, TCreate = Partial<Omit<TDoc, 
     return this.model.findOne(query).exec();
   }
 
-  async update(id: string, updateData: Partial<TDoc>): Promise<boolean> {
-    const result = await this.model.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async update(userID: string, updateData: Partial<TDoc>): Promise<boolean> {
+    const result = await this.model.findByIdAndUpdate(userID, updateData, { new: true }).exec();
     return !!result;
   }
 
-  async delete(id: string): Promise<boolean> {
-    const result = await this.model.findByIdAndDelete(id).exec();
+  async delete(userID: string): Promise<boolean> {
+    const result = await this.model.findByIdAndDelete(userID).exec();
     return !!result;
   }
 }

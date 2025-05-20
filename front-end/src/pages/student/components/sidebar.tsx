@@ -37,10 +37,12 @@ export function Sidebar({ sidebarOpen }) {
     {
       icon: <BookOpenCheck className="h-4 w-4" />,
       name: "My Learning",
-      path: "/student/my-learning",
+      path: "/student/enrolled",
       disabled: false,
     },
     { icon: <Heart className="h-4 w-4" />, name: "Wishlist", path: "/student/wishlist", disabled: false },
+    { icon: <Heart className="h-4 w-4" />, name: "Chat", path: "/community", disabled: false },
+
     { icon: <Settings className="h-4 w-4" />, name: "Settings", path: "/student/settings", disabled: false },
   ]
 

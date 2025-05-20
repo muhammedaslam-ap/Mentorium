@@ -4,6 +4,8 @@ import { TTutorProfileInput } from '../types/tutor';
 import { MulterS3File } from '../types/multer';
 import { TutorService } from '../services/tutorServices';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../shared/constant';
+import { CustomError } from '../utils/custom.error';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -16,6 +18,58 @@ const s3Client = new S3Client({
 export class TutorController {
   constructor(private tutorService: TutorService) {}
 
+    async getNotification(req: CustomRequest, res: Response) {
+    try {
+      const user = (req as CustomRequest).user;
+      const { id } = user;
+      const notifications = await this.tutorService.getNotification(id);
+
+      res.status(HTTP_STATUS.CREATED).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        notifications,
+      });
+    } catch (error) {
+      if (error instanceof CustomError) {
+        res.status(error.statusCode).json({
+          successs: false,
+          message: error.message,
+        });
+        return;
+      }
+      console.log(error);
+      res
+        .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+  }
+
+    async markAllNotificationsAsRead(req: CustomRequest, res: Response) {
+    try {
+      
+      const id = (req as CustomRequest).user.id;
+
+      await this.tutorService.markAllNotificationsAsRead(id);
+
+      res.status(HTTP_STATUS.CREATED).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+      });
+    } catch (error) {
+      if (error instanceof CustomError) {
+        res
+          .status(error.statusCode)
+          .json({ success: false, message: error.message });
+        return;
+      }
+      console.log(error);
+      res
+        .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+  }
+
+
   async addTutorProfile(req: CustomRequest, res: Response): Promise<void> {
     try {
       const tutorId = req.user?.id;
@@ -27,22 +81,22 @@ export class TutorController {
 
       if (!tutorId) {
         console.error('addTutorProfile - No tutor ID found');
-        res.status(401).json({ message: 'Unauthorized: No tutor ID found' });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.UNAUTH_NO_USER_FOUND });
         return;
       }
       if (!specialization) {
         console.error('addTutorProfile - Specialization is required');
-        res.status(400).json({ message: 'Specialization is required' });
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.INCOMPLETE_INFO });
         return;
       }
       if (!phone) {
         console.error('addTutorProfile - Phone number is required');
-        res.status(400).json({ message: 'Phone number is required' });
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.INCOMPLETE_INFO });
         return;
       }
       if (!req.file) {
         console.error('addTutorProfile - No verification document uploaded');
-        res.status(400).json({ message: 'No verification document uploaded' });
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.MISSING_PARAMETERS });
         return;
       }
 
@@ -61,7 +115,7 @@ export class TutorController {
         console.log(`File verified in S3: ${key}`);
       } catch (error: any) {
         console.error(`Failed to verify S3 file: ${key}`, error);
-        res.status(500).json({ message: 'Failed to verify uploaded document in S3' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
         return;
       }
 
@@ -70,13 +124,16 @@ export class TutorController {
         specialization,
         phone,
         bio,
-        verificationDocUrl
+        verificationDocUrl,
       };
 
       try {
         await this.tutorService.addTutorProfile(tutorId, profileData, verificationDocUrl);
         console.log(`Tutor profile created for tutorId: ${tutorId}, verificationDocUrl: ${verificationDocUrl}`);
-        res.status(201).json({ message: 'Tutor profile created successfully', document: verificationDocUrl });
+        res.status(HTTP_STATUS.CREATED).json({
+          message: SUCCESS_MESSAGES.CREATED,
+          document: verificationDocUrl,
+        });
       } catch (error: any) {
         console.error('Failed to save tutor profile:', error.message);
         try {
@@ -90,11 +147,11 @@ export class TutorController {
         } catch (deleteError) {
           console.error(`Failed to delete S3 file: ${key}`, deleteError);
         }
-        res.status(500).json({ message: 'Failed to create tutor profile' });
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
       }
     } catch (error: any) {
       console.error('Error adding tutor profile:', error.message);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
@@ -106,15 +163,15 @@ export class TutorController {
 
       if (!profile) {
         console.log(`Profile not found for tutorId: ${tutorId}`);
-        res.status(404).json({ message: 'Tutor profile not found' });
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
         return;
       }
 
       console.log(`Profile fetched:`, profile);
-      res.status(200).json({ profile });
+      res.status(HTTP_STATUS.OK).json({ profile, message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS });
     } catch (error: any) {
       console.error('Error fetching tutor profile:', error.message);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
@@ -127,7 +184,7 @@ export class TutorController {
 
       if (!tutorId) {
         console.error('updateTutorProfile - No tutor ID found');
-        res.status(401).json({ message: 'Unauthorized: No tutor ID found' });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.UNAUTH_NO_USER_FOUND });
         return;
       }
 
@@ -135,13 +192,13 @@ export class TutorController {
 
       await this.tutorService.updateTutorProfile(tutorId, profileData, req.file as MulterS3File);
       console.log(`Profile updated for tutorId: ${tutorId}`);
-      res.status(200).json({
-        message: 'Tutor profile updated successfully',
+      res.status(HTTP_STATUS.OK).json({
+        message: SUCCESS_MESSAGES.UPDATE_SUCCESS,
         document: req.file ? (req.file as MulterS3File).location : undefined,
       });
     } catch (error: any) {
       console.error('Error updating tutor profile:', error.message);
-      res.status(500).json({ message: error.message || 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
@@ -153,7 +210,7 @@ export class TutorController {
 
       if (!profile || !profile.verificationDocUrl) {
         console.log(`No document found for tutorId: ${tutorId}`);
-        res.status(404).json({ message: 'Document not found' });
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
         return;
       }
 
@@ -163,10 +220,10 @@ export class TutorController {
 
       const presignedUrl = await this.tutorService.getPresignedUrl(key);
       console.log(`Pre-signed URL generated: ${presignedUrl}`);
-      res.status(200).json({ url: presignedUrl });
+      res.status(HTTP_STATUS.OK).json({ url: presignedUrl, message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS });
     } catch (error: any) {
       console.error('Error generating pre-signed URL:', error.message);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 }

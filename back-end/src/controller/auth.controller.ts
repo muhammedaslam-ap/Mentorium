@@ -146,5 +146,17 @@ export class AuthController {
       }
     }
 
+    async findUserById(req:Request,res:Response){
+      try {
+        const {userId} = req.body;
+        const userData = await this._authService.findByIdWithProfile(userId);
+
+        res.status(HTTP_STATUS.OK).json({message:"Data retrieved",userData})
+        
+      } catch (error:any) {
+         res.status(error.status || 500).json({ message: error.message });
+      }
+    }
+
   
 }

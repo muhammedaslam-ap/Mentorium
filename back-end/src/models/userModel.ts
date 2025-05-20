@@ -1,9 +1,9 @@
 import mongoose, { Schema, model, Model, Document, Types } from "mongoose";
 import { TUserModel } from "../types/user";
 
-// 👇 Extend Document for proper typing in Mongoose
 export interface TUserDocument extends TUserModel, Document {
   _id: Types.ObjectId;
+  
 }
 
 const userSchema = new Schema<TUserDocument>(
@@ -22,5 +22,4 @@ const userSchema = new Schema<TUserDocument>(
   { timestamps: true }
 );
 
-// ✅ Model is now typed as Model<TUserDocument>
 export const userModel: Model<TUserDocument> = model<TUserDocument>("User", userSchema);

@@ -4,6 +4,7 @@ import { ITutorProfile } from '../models/tutorProfileModel';
 import { TutorRepository } from '../repositories/tutorRepository';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { MulterS3File } from '../types/multer';
+import { TNotification } from '../types/notification';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -128,4 +129,12 @@ export class TutorService {
       throw new Error(`Failed to update tutor profile: ${error.message}`);
     }
   }
+    async markAllNotificationsAsRead(id: string): Promise<void> {
+    await this.tutorRepository.markAllNotificationsAsRead(id);
+  }
+    async getNotification(id: string): Promise<TNotification[] | null> {
+    const notification = await this.tutorRepository.getNotifications(id);
+    return notification;
+  }
+  
 }

@@ -15,7 +15,7 @@ interface ProfileResponse {
     specialization?: string | null;
     phone?: string | null;
     bio?: string | null;
-    isAccepted?: boolean | null;
+    isAccepted?: boolean | null; // Maps to approvalStatus
     rejectionReason?: string | null;
     verificationDocUrl?: string | null;
   } | null;
@@ -49,11 +49,12 @@ export class TutorService {
       console.log("Profile creation response:", response.data);
       return response.data;
     } catch (error) {
-      if(error instanceof AxiosError){
-      const errorMessage = error?.response?.data?.message || "Unable to fetch lessons"
-          toast.error(errorMessage)
-          throw error
-        }   
+      if (error instanceof AxiosError) {
+        const errorMessage = error?.response?.data?.message || "Unable to create profile";
+        toast.error(errorMessage);
+        throw error;
+      }
+      throw error;
     }
   }
 
@@ -64,6 +65,51 @@ export class TutorService {
       return response.data;
     } catch (error: any) {
       console.error("Failed to fetch profile:", error);
+      const errorMessage = error?.response?.data?.message || "Unable to fetch profile";
+      toast.error(errorMessage);
+      throw error;
+    }
+  }
+
+
+  async fetchNotification() {
+    try {
+      const response = await authAxiosInstance.get("/tutors/notifications");
+      return response;
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      toast.error("Could not load notifications");
+    }
+  }
+
+  async markNotifiactionAsRead(notificationId: string) {
+    try {
+      await authAxiosInstance.put(
+        `/tutors/notifications/${notificationId}/read`
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async markAllNotificationAsRead() {
+    try {
+      await authAxiosInstance.put("/tutors/notifications/read-all");
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      toast.error("Failed to update notifications");
+    }
+  }
+
+  async getTutorProfile(tutorId: string): Promise<ProfileResponse> {
+    try {
+      const response = await authAxiosInstance.get(`/admin/tutor/${tutorId}/profile`);
+      console.log(`Tutor profile fetch response for tutorId ${tutorId}:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to fetch tutor profile for tutorId ${tutorId}:`, error);
+      const errorMessage = error?.response?.data?.message || "Unable to fetch tutor profile";
+      toast.error(errorMessage);
       throw error;
     }
   }
@@ -91,17 +137,19 @@ export class TutorService {
       console.log("Profile update response:", response.data);
       return response.data;
     } catch (error) {
-      if(error instanceof AxiosError){
-      const errorMessage = error?.response?.data?.message || "Unable to fetch lessons"
-          toast.error(errorMessage)
-          throw error
-        }   
+      if (error instanceof AxiosError) {
+        const errorMessage = error?.response?.data?.message || "Unable to update profile";
+        toast.error(errorMessage);
+        throw error;
+      }
+      throw error;
     }
   }
 
-  async getDocumentPresignedUrl(): Promise<string> {
+  async getDocumentPresignedUrl(tutorId?: string): Promise<string> {
     try {
-      const response = await authAxiosInstance.get("/tutor/document");
+      const endpoint = tutorId ? `/admin/tutor/${tutorId}/document` : "/tutor/document";
+      const response = await authAxiosInstance.get(endpoint);
       console.log("Pre-signed URL response:", response.data);
       return response.data.url;
     } catch (error: any) {
@@ -118,12 +166,13 @@ export class TutorService {
       toast.success("Logged out successfully");
       return response.data;
     } catch (error) {
-          if(error instanceof AxiosError){
-          const errorMessage = error?.response?.data?.message || "Unable to fetch lessons"
-              toast.error(errorMessage)
-              throw error
-            }   
-        }
+      if (error instanceof AxiosError) {
+        const errorMessage = error?.response?.data?.message || "Unable to logout";
+        toast.error(errorMessage);
+        throw error;
+      }
+      throw error;
+    }
   }
 }
 

@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { CustomRequest } from '../middlewares/userAuthMiddleware';
-import { Tquiz,TquizInput } from '../types/quiz';
+import { TquizInput } from '../types/quiz';
 import { IquizService } from '../interfaces/serviceInterface/IquizServices';
+import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../shared/constant';
 
 export class QuizController {
   constructor(private quizService: IquizService) {}
@@ -9,60 +10,60 @@ export class QuizController {
   async addQuiz(req: CustomRequest, res: Response): Promise<void> {
     try {
       const tutorId = req.user?.id;
-      const { question,answer,lesson_id,options } = req.body;
-      console.log('addLesson - Request body:', {question,answer,lesson_id,options});
+      const { question, answer, lesson_id, options } = req.body;
+      console.log('addQuiz - Request body:', { question, answer, lesson_id, options });
 
       if (!tutorId) {
-        console.error('addquiz - No tutor ID found');
-        res.status(401).json({ message: 'Unauthorized: No tutor ID found' });
+        console.error('addQuiz - No tutor ID found');
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.UNAUTH_NO_USER_FOUND });
         return;
       }
 
-        if (!lesson_id) {
-        console.error('addLesson - Missing required fields lesson_id');
-        res.status(400).json({ message: 'Title, lesson_id' });
+      if (!lesson_id) {
+        console.error('addQuiz - Missing required field lesson_id');
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.INCOMPLETE_INFO });
         return;
       }
-     
+
       if (!question || !answer || !options) {
-        console.error('addLesson - Missing required fields');
-        res.status(400).json({ message: 'question, answer, and options are required' });
+        console.error('addQuiz - Missing required fields');
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ERROR_MESSAGES.INCOMPLETE_INFO });
         return;
       }
 
-      const lessonData: TquizInput = {
+      const quizData: TquizInput = {
         answer,
         lesson_id,
         options,
-        question
+        question,
       };
 
-      const quiz = await this.quizService.addQuiz(tutorId, lessonData);
-      console.log(`quiz added for lesson: ${lesson_id}`);
-      res.status(201).json({ message: 'Lesson added successfully',quiz});
+      const quiz = await this.quizService.addQuiz(tutorId, quizData);
+      console.log(`Quiz added for lesson: ${lesson_id}`);
+      res.status(HTTP_STATUS.CREATED).json({ message: SUCCESS_MESSAGES.CREATED, quiz });
     } catch (error: any) {
       console.error('Error adding quiz:', error.message);
-      res.status(500).json({ message: error.message || 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
   async getQuiz(req: CustomRequest, res: Response): Promise<void> {
     try {
       const quizId = req.params.quizId;
-      console.log(`getLesson - Fetching quiz with ID: ${quizId}`);
+      console.log(`getQuiz - Fetching quiz with ID: ${quizId}`);
       const quiz = await this.quizService.getQuizById(quizId);
 
       if (!quiz) {
-        console.log(`quiz not found: ${quizId}`);
-        res.status(404).json({ message: 'quiz not found' });
+        console.log(`Quiz not found: ${quizId}`);
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
         return;
       }
 
-      console.log(`Lesson fetched:`, quiz);
-      res.status(200).json({ quiz });
+      console.log(`Quiz fetched:`, quiz);
+      res.status(HTTP_STATUS.OK).json({ quiz, message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS });
     } catch (error: any) {
       console.error('Error fetching quiz:', error.message);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
@@ -72,45 +73,40 @@ export class QuizController {
       console.log(`getQuizByLesson - Fetching quiz for lessonId: ${lessonId}`);
       const quiz = await this.quizService.getQuizByLessonId(lessonId);
 
-      console.log(`quiz fetched for lessonId: ${lessonId}`, quiz);
-      res.status(200).json({ quiz });
+      console.log(`Quiz fetched for lessonId: ${lessonId}`, quiz);
+      res.status(HTTP_STATUS.OK).json({ quiz, message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS });
     } catch (error: any) {
       console.error('Error fetching quiz:', error.message);
-      res.status(500).json({ message: 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
   async updateQuiz(req: CustomRequest, res: Response): Promise<void> {
     try {
       const tutorId = req.user?.id;
-      const quiId = req.params.quizId;
-      const {  answer,
-       lesson_id,
-       options,
-       question } = req.body;
-      console.log('updateQuiz - Request body:', {  answer,
-       lesson_id,
-       options,
-       question });
+      const quizId = req.params.quizId;
+      const { answer, lesson_id, options, question } = req.body;
+      console.log('updateQuiz - Request body:', { answer, lesson_id, options, question });
 
-      if (!quiId) {
-        console.error('updateLesson - No quiz ID found',quiId);
-        res.status(401).json({ message: 'Unauthorized: No tutor ID found' });
+      if (!tutorId) {
+        console.error('updateQuiz - No tutor ID found');
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.UNAUTH_NO_USER_FOUND });
         return;
       }
-      const lessonData: Partial<TquizInput> = {
-       answer,
-       lesson_id,
-       options,
-       question
+
+      const quizData: Partial<TquizInput> = {
+        answer,
+        lesson_id,
+        options,
+        question,
       };
 
-      const lesson = await this.quizService.updateQuiz(tutorId, quiId, lessonData);
-      console.log(`quiz updated: ${quiId}`);
-      res.status(200).json({ message: 'quiz updated successfully', lesson });
+      const quiz = await this.quizService.updateQuiz(tutorId, quizId, quizData);
+      console.log(`Quiz updated: ${quizId}`);
+      res.status(HTTP_STATUS.OK).json({ message: SUCCESS_MESSAGES.UPDATE_SUCCESS, quiz });
     } catch (error: any) {
       console.error('Error updating quiz:', error.message);
-      res.status(500).json({ message: error.message || 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 
@@ -118,20 +114,20 @@ export class QuizController {
     try {
       const tutorId = req.user?.id;
       const quizId = req.params.quizId;
-      console.log(`deleteQuiz- Deleting quiz with ID: ${quizId}`);
+      console.log(`deleteQuiz - Deleting quiz with ID: ${quizId}`);
 
       if (!tutorId) {
         console.error('deleteQuiz - No tutor ID found');
-        res.status(401).json({ message: 'Unauthorized: No tutor ID found' });
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: ERROR_MESSAGES.UNAUTH_NO_USER_FOUND });
         return;
       }
 
       await this.quizService.deleteQuiz(tutorId, quizId);
-      console.log(`quiz deleted: ${quizId}`);
-      res.status(200).json({ message: 'quiz deleted successfully' });
+      console.log(`Quiz deleted: ${quizId}`);
+      res.status(HTTP_STATUS.OK).json({ message: SUCCESS_MESSAGES.DELETE_SUCCESS });
     } catch (error: any) {
       console.error('Error deleting quiz:', error.message);
-      res.status(500).json({ message: error.message || 'Internal server error' });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
 }

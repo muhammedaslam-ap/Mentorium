@@ -180,9 +180,8 @@ export class CourseRepository implements ICourseRepository {
     return { courses, total };
   } catch (error) {
     console.error("Error fetching courses:", error);
-      throw new Error("Failed to fetch courses"); // or a CustomError if you have one
+      throw new Error("Failed to fetch courses"); 
 
-    // throw new CustomError("Failed to fetch courses", HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 

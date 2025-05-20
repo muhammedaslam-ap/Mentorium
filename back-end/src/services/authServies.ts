@@ -9,6 +9,7 @@ import {
   TUserLogin,
   TUserModel,
   TUserRegister,
+  TUserWithProfile,
 } from "../types/user";
 import { comparePassword, hashPassword } from "../utils/bcrypt";
 import { CustomError } from "../utils/custom.error";
@@ -144,5 +145,10 @@ async resetPassword(data: TUpdatePassword): Promise<boolean> {
       throw new CustomError(ERROR_MESSAGES.EMAIL_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
     return user;
+  }
+
+
+   async  findByIdWithProfile(id: string): Promise<TUserWithProfile | null>{
+    return this._userRepository.findByIdWithProfile(id)
   }
 }

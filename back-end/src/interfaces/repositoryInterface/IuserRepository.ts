@@ -4,6 +4,7 @@ import {
   TUserModel,
   TUserPaginatedResult,
   TUserRegister,
+  TUserWithProfile,
 } from "../../types/user";
 
 export interface IUserRepository {
@@ -15,4 +16,5 @@ export interface IUserRepository {
   acceptTutor(tutorId: string): Promise<void>;
   findById(id: string): Promise<TUserModel|null>;
   updatePassword(id:string,newPassword:string):Promise<boolean>;
+  findByIdWithProfile(id: string): Promise<TUserWithProfile | null>
 }

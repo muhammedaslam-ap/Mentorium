@@ -6,7 +6,7 @@ import axios from "axios";
 export interface IUserDetailsResponse {
   users: {
     _id: string;
-    name: string;
+    username: string;
     email: string;
     role: string;
     avatar?: string;
@@ -35,9 +35,9 @@ export interface IProfileUpdateResponse {
 
 export const profileService = {
   // Fetch logged-in user details
-  async userDetails(): Promise<IUserDetailsResponse> {
+  async userDetails(userId): Promise<IUserDetailsResponse> {
     try {
-      const response = await authAxiosInstance.get("/users/me");
+      const response = await authAxiosInstance.get("/me",{userId});
       return response.data;
     } catch (error) {
         if (axios.isAxiosError(error)) {

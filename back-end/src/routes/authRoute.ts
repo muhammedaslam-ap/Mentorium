@@ -66,5 +66,14 @@ export class authRoutes{
             res.status(500).json({ error: "An error occurred while resetting the password." });
         }
     });
+
+
+        this.router.post("/me", async (req: Request, res: Response) => {
+        try {
+            await injectedAuthController.findUserById(req, res);
+        } catch (error) {
+            res.status(500).json({ error: "An error occurred while resetting the password." });
+        }
+    });
 }
 }

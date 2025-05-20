@@ -415,7 +415,7 @@ const EditCourse: React.FC = () => {
                     </div>
 
                     <Form.Item
-                      label="Price (USD)"
+                      label="Price (INR)"
                       validateStatus={errors.price ? "error" : ""}
                       help={errors.price}
                     >

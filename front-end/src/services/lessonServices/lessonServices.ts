@@ -22,7 +22,7 @@ export const lessonService = {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 120000, // 2 minutes for video upload
+        timeout: 120000,
       });
       console.log("addLesson Response:", response.data);
       toast.success("Lesson added successfully");
@@ -82,7 +82,7 @@ export const lessonService = {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 120000, // 2 minutes for video upload
+        timeout: 120000, 
       });
       console.log("updateLesson Response:", response.data);
       toast.success("Lesson updated successfully");

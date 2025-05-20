@@ -1,12 +1,10 @@
-"use client"
 
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { User, Edit, Save, Loader2, AlertTriangle, GraduationCap, Heart } from 'lucide-react'
+import { User, Edit, Save, Loader2, AlertTriangle, GraduationCap, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
@@ -42,6 +40,8 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+const EDUCATION_OPTIONS = ["", "High School", "Associate Degree", "Bachelor's Degree", "Master's Degree", "PhD", "Other"]
+
 // Error Fallback UI
 function ErrorFallback() {
   const navigate = useNavigate()
@@ -50,7 +50,7 @@ function ErrorFallback() {
     <div className="min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-gray-200 dark:border-gray-700 shadow-sm">
         <CardHeader className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
-          <CardTitle className="text-gray-900 dark:text-gray-100">Something went wrong</CardTitle>
+          <CardTitle className="text-gray-600 dark:text-gray-300">Something went wrong</CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-300">We encountered an error while loading your profile</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
@@ -64,7 +64,7 @@ function ErrorFallback() {
               <Button
                 variant="outline"
                 onClick={() => window.location.reload()}
-                className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Refresh Page
               </Button>
@@ -97,6 +97,7 @@ function StudentProfileContent() {
   const [hasProfile, setHasProfile] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [studentName, setStudentName] = useState<string>("")
+  const [formErrors, setFormErrors] = useState<{ education?: string; aboutMe?: string; interests?: string }>({})
 
   useEffect(() => {
     let isMounted = true
@@ -169,13 +170,57 @@ function StudentProfileContent() {
     }
   }
 
+  const validateForm = () => {
+    const errors: { education?: string; aboutMe?: string; interests?: string } = {}
+
+    // Education: Required, must not be empty
+    if (!profile.education) {
+      errors.education = "Please select an education level"
+    }
+
+    // About Me: Required, min 10 chars, max 500 chars
+    if (!profile.aboutMe?.trim()) {
+      errors.aboutMe = "About Me is required"
+    } else if (profile.aboutMe.trim().length < 10) {
+      errors.aboutMe = "About Me must be at least 10 characters long"
+    } else if (profile.aboutMe.trim().length > 500) {
+      errors.aboutMe = "About Me must not exceed 500 characters"
+    }
+
+    // Interests: Required, min 10 chars, max 500 chars
+    if (!profile.interests?.trim()) {
+      errors.interests = "Interests are required"
+    } else if (profile.interests.trim().length < 10) {
+      errors.interests = "Interests must be at least 10 characters long"
+    } else if (profile.interests.trim().length > 500) {
+      errors.interests = "Interests must not exceed 500 characters"
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setProfile((prev) => ({ ...prev, [name]: value }))
+    // Clear error for this field when user types
+    setFormErrors((prev) => ({ ...prev, [name]: undefined }))
+  }
+
+  const handleEducationChange = (value: string) => {
+    setProfile((prev) => ({ ...prev, education: value }))
+    // Clear education error when user selects
+    setFormErrors((prev) => ({ ...prev, education: undefined }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate form before submission
+    if (!validateForm()) {
+      toast.error("Please fix the errors in the form")
+      return
+    }
 
     setSaving(true)
     try {
@@ -193,6 +238,7 @@ function StudentProfileContent() {
       console.log("Fetching updated profile after save")
       await fetchStudentProfile()
       setEditMode(false)
+      setFormErrors({})
     } catch (error: any) {
       console.error("Failed to save profile:", error)
       toast.error(error?.message || "Failed to save profile")
@@ -206,6 +252,7 @@ function StudentProfileContent() {
       setProfile(originalProfile)
     }
     setEditMode(false)
+    setFormErrors({})
   }
 
   if (loading) {
@@ -216,7 +263,7 @@ function StudentProfileContent() {
           <Sidebar sidebarOpen={sidebarOpen} />
           <div className="flex h-[80vh] items-center justify-center w-full">
             <div className="flex flex-col items-center">
-              <div className="h-12 w-12 rounded-full border-4 border-blue-200 dark:border-gray-600 border-t-blue-500 dark:border-t-blue-400 animate-spin"></div>
+              <div className="h-12 w-12 rounded-full border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 dark:border-t-blue-400 animate-spin"></div>
               <p className="mt-4 text-blue-600 dark:text-blue-400 font-medium">Loading profile...</p>
             </div>
           </div>
@@ -232,16 +279,16 @@ function StudentProfileContent() {
         <div className="flex">
           <Sidebar sidebarOpen={sidebarOpen} />
           <div className="container mx-auto max-w-4xl p-4 md:p-8">
-            <Alert className="mb-6 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            <Alert className="mb-6 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              <AlertTitle className="text-gray-900 dark:text-gray-100 font-medium">Error loading profile</AlertTitle>
+              <AlertTitle className="text-gray-600 dark:text-gray-300 font-medium">Error loading profile</AlertTitle>
               <AlertDescription className="text-gray-600 dark:text-gray-300">
                 {error}
                 <div className="mt-4 flex gap-4">
                   <Button
                     variant="outline"
                     onClick={() => fetchStudentProfile()}
-                    className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     Try Again
                   </Button>
@@ -270,23 +317,23 @@ function StudentProfileContent() {
           <div className={`flex-1 ${sidebarOpen ? "md:ml-64" : ""}`}>
             <div className="container mx-auto max-w-4xl p-4 md:p-8">
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Student Profile</h1>
+                <h1 className="text-3xl font-bold text-gray-600 dark:text-gray-300">Student Profile</h1>
                 <p className="text-gray-600 dark:text-gray-300">Get started by creating your profile</p>
               </div>
 
               <Card className="border-gray-200 dark:border-gray-700 shadow-sm">
                 <CardHeader className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                  <CardTitle className="text-gray-900 dark:text-gray-100">Complete Your Profile</CardTitle>
+                  <CardTitle className="text-gray-600 dark:text-gray-300">Complete Your Profile</CardTitle>
                   <CardDescription className="text-gray-600 dark:text-gray-300">
                     Create your student profile to personalize your learning experience
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-8 pb-6 px-6 md:px-8">
                   <div className="text-center">
-                    <div className="mx-auto h-24 w-24 rounded-full border-4 border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <div className="mx-auto h-24 w-24 rounded-full border-4 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                       <User className="h-12 w-12 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h2 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">No Profile Found</h2>
+                    <h2 className="mt-6 text-xl font-semibold text-gray-600 dark:text-gray-300">No Profile Found</h2>
                     <p className="mt-2 text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
                       You haven't created your student profile yet. Complete your profile to personalize your learning
                       experience and help us recommend courses that match your interests.
@@ -302,28 +349,28 @@ function StudentProfileContent() {
 
                   <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
                         <GraduationCap className="h-5 w-5" />
                       </div>
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Education</h3>
+                      <h3 className="font-medium text-gray-600 dark:text-gray-300 mb-2">Education</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Share your educational background to help us recommend relevant courses.
                       </p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
                         <User className="h-5 w-5" />
                       </div>
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">About Me</h3>
+                      <h3 className="font-medium text-gray-600 dark:text-gray-300 mb-2">About Me</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Tell us about yourself, your goals, and what you hope to achieve.
                       </p>
                     </div>
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
+                      <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
                         <Heart className="h-5 w-5" />
                       </div>
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Interests</h3>
+                      <h3 className="font-medium text-gray-600 dark:text-gray-300 mb-2">Interests</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-300">
                         Share your interests to help us personalize your learning experience.
                       </p>
@@ -348,7 +395,7 @@ function StudentProfileContent() {
           <div className="container mx-auto max-w-4xl p-4 md:p-8">
             <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Student Profile</h1>
+                <h1 className="text-3xl font-bold text-gray-600 dark:text-gray-300">Student Profile</h1>
                 <p className="text-gray-600 dark:text-gray-300">Manage your profile information</p>
               </div>
               {!editMode && hasProfile && (
@@ -367,30 +414,30 @@ function StudentProfileContent() {
                 {/* Profile Overview Card */}
                 <Card className="border-gray-200 dark:border-gray-700 shadow-sm md:col-span-1">
                   <CardHeader className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                    <CardTitle className="text-gray-900 dark:text-gray-100">Overview</CardTitle>
+                    <CardTitle className="text-gray-600 dark:text-gray-300">Overview</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-6 flex flex-col items-center text-center">
-                    <Avatar className="h-24 w-24 border-4 border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-shadow">
+                    <Avatar className="h-24 w-24 border-4 border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
                       <AvatarImage src="/placeholder.svg?height=96&width=96&text=S" alt="Student" />
                       <AvatarFallback className="bg-blue-600 dark:bg-blue-400 text-white text-2xl">
                         {studentName?.charAt(0) || "S"}
                       </AvatarFallback>
                     </Avatar>
-                    <h2 className="mt-4 text-xl font-bold text-gray-900 dark:text-gray-100">{studentName || "Student"}</h2>
+                    <h2 className="mt-4 text-xl font-bold text-gray-600 dark:text-gray-300">{studentName || "Student"}</h2>
                     <p className="text-gray-600 dark:text-gray-300">Student</p>
 
-                    <Separator className="my-6 bg-gray-200 dark:bg-gray-600" />
+                    <Separator className="my-6 bg-gray-200 dark:bg-gray-700" />
 
                     <div className="w-full space-y-4">
                       {hasProfile && (
                         <>
                           <div className="flex justify-between items-center">
                             <span className="text-gray-600 dark:text-gray-300 font-medium">Role:</span>
-                            <span className="text-gray-900 dark:text-gray-100">Student</span>
+                            <span className="text-gray-600 dark:text-gray-300">Student</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-gray-600 dark:text-gray-300 font-medium">Status:</span>
-                            <span className="text-gray-900 dark:text-gray-100">Active</span>
+                            <span className="text-gray-600 dark:text-gray-300">Active</span>
                           </div>
                         </>
                       )}
@@ -406,7 +453,7 @@ function StudentProfileContent() {
                 {/* Profile Details Card */}
                 <Card className="border-gray-200 dark:border-gray-700 shadow-sm md:col-span-2">
                   <CardHeader className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                    <CardTitle className="text-gray-900 dark:text-gray-100">
+                    <CardTitle className="text-gray-600 dark:text-gray-300">
                       {!hasProfile ? "Create Profile" : "Profile Details"}
                     </CardTitle>
                     <CardDescription className="text-gray-600 dark:text-gray-300">
@@ -424,16 +471,23 @@ function StudentProfileContent() {
                       </Label>
                       <div className="relative">
                         <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <Input
+                        <select
                           id="education"
-                          name="education"
-                          value={profile.education}
-                          onChange={handleInputChange}
-                          placeholder="Your educational background"
-                          className="pl-10 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
+                          value={profile.education || ""}
+                          onChange={(e) => handleEducationChange(e.target.value)}
                           disabled={!editMode}
-                        />
+                          className={`pl-10 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 w-full h-10 rounded-md ${formErrors.education ? "border-red-500 dark:border-red-400" : ""}`}
+                        >
+                          {EDUCATION_OPTIONS.map((option) => (
+                            <option key={option || "none"} value={option}>
+                              {option || "Select an option"}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+                      {formErrors.education && (
+                        <p className="text-sm text-red-500 dark:text-red-400">{formErrors.education}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -446,9 +500,12 @@ function StudentProfileContent() {
                         value={profile.aboutMe}
                         onChange={handleInputChange}
                         placeholder="Tell us about yourself, your goals, and what you hope to achieve"
-                        className="min-h-[100px] border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
+                        className={`min-h-[100px] border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 ${formErrors.aboutMe ? "border-red-500 dark:border-red-400" : ""}`}
                         disabled={!editMode}
                       />
+                      {formErrors.aboutMe && (
+                        <p className="text-sm text-red-500 dark:text-red-400">{formErrors.aboutMe}</p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -461,13 +518,16 @@ function StudentProfileContent() {
                         value={profile.interests}
                         onChange={handleInputChange}
                         placeholder="Share your interests to help us personalize your learning experience"
-                        className="min-h-[100px] border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
+                        className={`min-h-[100px] border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 ${formErrors.interests ? "border-red-500 dark:border-red-400" : ""}`}
                         disabled={!editMode}
                       />
                       {editMode && (
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           Sharing your interests helps us recommend courses that match your preferences.
                         </p>
+                      )}
+                      {formErrors.interests && (
+                        <p className="text-sm text-red-500 dark:text-red-400">{formErrors.interests}</p>
                       )}
                     </div>
                   </CardContent>
@@ -477,7 +537,7 @@ function StudentProfileContent() {
                         type="button"
                         variant="outline"
                         onClick={handleCancel}
-                        className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         Cancel
                       </Button>
@@ -507,7 +567,7 @@ function StudentProfileContent() {
               {!editMode && hasProfile && (
                 <Card className="mt-6 border-gray-200 dark:border-gray-700 shadow-sm">
                   <CardHeader className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-                    <CardTitle className="text-gray-900 dark:text-gray-100">Profile Tips</CardTitle>
+                    <CardTitle className="text-gray-600 dark:text-gray-300">Profile Tips</CardTitle>
                     <CardDescription className="text-gray-600 dark:text-gray-300">
                       How to make the most of your student profile
                     </CardDescription>
@@ -515,28 +575,28 @@ function StudentProfileContent() {
                   <CardContent className="pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
                           <GraduationCap className="h-5 w-5" />
                         </div>
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Keep Your Education Updated</h3>
+                        <h3 className="font-medium text-gray-600 dark:text-gray-300 mb-2">Keep Your Education Updated</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           Regularly update your education information to get more relevant course recommendations.
                         </p>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
                           <User className="h-5 w-5" />
                         </div>
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Share Your Goals</h3>
+                        <h3 className="font-medium text-gray-600 dark:text-gray-300 mb-2">Share Your Goals</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           Be specific about your learning goals in your About Me section to get better guidance.
                         </p>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-3">
                           <Heart className="h-5 w-5" />
                         </div>
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Explore New Interests</h3>
+                        <h3 className="font-medium text-gray-600 dark:text-gray-300 mb-2">Explore New Interests</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           Regularly update your interests to discover new courses and learning opportunities.
                         </p>

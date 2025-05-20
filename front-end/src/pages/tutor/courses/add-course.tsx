@@ -348,7 +348,7 @@ const AddCourse: React.FC = () => {
                       </Form.Item>
                     </div>
 
-                    <Form.Item label="Price (USD)" validateStatus={errors.price ? "error" : ""} help={errors.price}>
+                    <Form.Item label="Price (INR)" validateStatus={errors.price ? "error" : ""} help={errors.price}>
                       <Space>
                         <Slider
                           style={{ width: 200 }}

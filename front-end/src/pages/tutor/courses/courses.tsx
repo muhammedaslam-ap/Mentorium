@@ -371,7 +371,7 @@ const TutorCourses: React.FC = () => {
                         <div className="flex justify-between items-center mb-4">
                           <Tag color={getDifficultyColor(course.difficulty)}>{course.difficulty}</Tag>
                           <span className="font-semibold text-blue-600 dark:text-blue-400">
-                            ${course.price.toFixed(2)}
+                            ₹{course.price.toFixed(2)}
                           </span>
                         </div>
                         <p className="text-gray-500 dark:text-gray-400 text-xs">

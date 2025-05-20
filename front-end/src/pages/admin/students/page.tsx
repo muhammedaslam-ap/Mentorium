@@ -14,7 +14,6 @@ import { studentService } from "@/services/adminServices/userService"
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner"
 
-// Define the Student interface based on the API response
 interface Student {
   _id: string
   name: string
@@ -219,7 +218,7 @@ export default function StudentsManagement() {
                   <TableHead className="text-violet-900">Name</TableHead>
                   <TableHead className="text-violet-900">Email</TableHead>
                   <TableHead className="text-violet-900">Status</TableHead>
-                  <TableHead className="text-violet-900">Joined</TableHead>
+                  {/* <TableHead className="text-violet-900">Joined</TableHead> */}
                   <TableHead className="text-violet-900">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -255,9 +254,9 @@ export default function StudentsManagement() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-violet-600">
+                      {/* <TableCell className="text-violet-600">
                         {new Date(student.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell>
                         <Button
                           size="sm"

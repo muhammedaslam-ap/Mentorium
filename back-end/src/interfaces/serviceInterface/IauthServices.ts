@@ -1,5 +1,5 @@
 import { TVerifyOtpToRegister } from "../../types/otp";
-import { TUpdatePassword, TUserLogin, TUserModel, TUserRegister } from "../../types/user";
+import { TUpdatePassword, TUserLogin, TUserModel, TUserRegister, TUserWithProfile } from "../../types/user";
 
 export interface IAuthService {
   registerUser(data: TUserRegister): Promise<void>;
@@ -11,5 +11,7 @@ export interface IAuthService {
   resetPassword(data: TUpdatePassword): Promise<boolean>;
 
   verifyEmail(email: string): Promise<TUserModel | null>;
+
+  findByIdWithProfile(id: string): Promise<TUserWithProfile | null>
 
 }

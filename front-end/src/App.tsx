@@ -6,7 +6,7 @@ import { store } from "./redux/store"
 
 import AuthForm from "./pages/authForm"
 import { NotFound } from "./pages/404pageNotFound"
-import { UserHomePage } from "./pages/student/home"
+import Index from "./pages/student/home" 
 import TutorHome from "./pages/tutor/home"
 import AdminLogin from "./pages/admin/login/login"
 import AdminDashboard from "./pages/admin/dashboard/dashboard"
@@ -18,7 +18,6 @@ import EditCourse from "./pages/tutor/courses/edit-course"
 import TutorProfilePage from "./pages/tutor/profile/page"
 import StudentProfilePage from "./pages/student/profile/profile"
 
-// Import the new lesson management components
 import CourseLessons from "./pages/tutor/courses/lessons/lesson"
 import AddLesson from "./pages/tutor/courses/lessons/lesson"
 import EditLesson from "./pages/tutor/courses/lessons/lesson"
@@ -29,6 +28,10 @@ import CourseDetails from "./pages/student/courses/courseID/courseID"
 import AllCoursesPage from "./pages/student/courses/page"
 import AddQuizPage from "./pages/tutor/courses/lessons/quiz/add-quiz"
 import EditQuizPage from "./pages/tutor/courses/lessons/quiz/edit-quiz"
+import WishlistPage from "./pages/student/wishlist/wishlist"
+import CourseEnrollPage from "./pages/student/checkOut/checkOut"
+import EnrolledCourses from "./pages/student/courses/enrolledCourses/enrolledCourses"
+import { CommunityChat } from "./pages/student/communityChat/communityChat"
 
 function App() {
   return (
@@ -39,7 +42,7 @@ function App() {
         <Router>
           <Routes>
             {/* User routes */}
-            <Route path="/" element={<UserHomePage />} />
+            <Route path="/" element={<Index />} />
             <Route
               path="/auth"
               element={
@@ -62,7 +65,7 @@ function App() {
               path="/student/home"
               element={
                 <ProtectedUserRoute>
-                  <UserHomePage />
+                  <Index />
                 </ProtectedUserRoute>
               }
             />
@@ -74,6 +77,17 @@ function App() {
                 </ProtectedUserRoute>
               }
             />
+              <Route
+              key="user-community"
+              path="/community"
+              element={
+                <ProtectedUserRoute>
+                  {/* <ErrorBoundary> */}
+                    <CommunityChat />
+                  {/* </ErrorBoundary> */}
+                </ProtectedUserRoute>
+              }
+            />,
               <Route
               path="/student/courses"
               element={
@@ -87,6 +101,33 @@ function App() {
               element={
                 <ProtectedUserRoute>
                   <CourseDetails />
+                </ProtectedUserRoute>
+              }
+            />
+
+            <Route
+              path="/student/checkout/:courseId"
+              element={
+                <ProtectedUserRoute>
+                  <CourseEnrollPage />
+                </ProtectedUserRoute>
+              }
+            />
+
+            <Route
+              path="/student/wishlist"
+              element={
+                <ProtectedUserRoute>
+                  <WishlistPage />
+                </ProtectedUserRoute>
+              }
+            />
+
+             <Route
+              path="/student/enrolled"
+              element={
+                <ProtectedUserRoute>
+                  <EnrolledCourses />
                 </ProtectedUserRoute>
               }
             />
