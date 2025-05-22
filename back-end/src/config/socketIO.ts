@@ -1,6 +1,8 @@
 import { Server, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import mongoose, { Document, Schema } from "mongoose";
+import { TutorService } from "../services/tutorServices";
+import { TutorRepository } from "../repositories/tutorRepository";
 
 interface Message extends Document {
   _id: string;
@@ -29,6 +31,9 @@ const messageSchema = new Schema<Message>({
 });
 
 const MessageModel = mongoose.model<Message>("Message", messageSchema);
+
+const tutorRepository = new TutorRepository();
+const tutorService = new TutorService(tutorRepository);
 
 export const initializeSocket = (server: HttpServer) => {
   const io = new Server(server, {
@@ -95,7 +100,6 @@ export const initializeSocket = (server: HttpServer) => {
             status: newMessage.status,
           });
 
-          // Update message status to delivered
           await MessageModel.updateOne(
             { _id: newMessage._id },
             { status: "delivered" }
@@ -132,9 +136,7 @@ export const initializeSocket = (server: HttpServer) => {
         }
 
         try {
-          // In production, upload image to a storage service (e.g., AWS S3) and get URL
-          const imageUrl = image.data; // Replace with storage service URL
-
+          const imageUrl = image.data; 
           const newMessage = new MessageModel({
             communityId,
             sender: message.sender,
@@ -156,7 +158,6 @@ export const initializeSocket = (server: HttpServer) => {
             imageUrl: newMessage.imageUrl,
           });
 
-          // Update message status to delivered
           await MessageModel.updateOne(
             { _id: newMessage._id },
             { status: "delivered" }
@@ -183,11 +184,23 @@ export const initializeSocket = (server: HttpServer) => {
       }: Notification) => {
         try {
           console.log(`Sending notification for community ${communityId}`);
+
+          await tutorService.sendCommunityNotifications(
+            communityId,
+            senderId,
+            message,
+            courseTitle
+          );
+
           socket.to(communityId).emit("receive_notification", {
+            type: "chat_message",
+            message: `${message.sender} : ${
+              message.content ? message.content.slice(0, 50) + "..." : "Sent an image"
+            }`,
             communityId,
             courseTitle,
-            message,
             senderId,
+            createdAt: new Date().toISOString(),
           });
         } catch (error) {
           console.error("Error sending notification:", error);

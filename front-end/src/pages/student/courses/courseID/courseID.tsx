@@ -271,7 +271,7 @@ const CourseDetails = () => {
         <Button
           variant="ghost"
           className="mb-6 flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-          onClick={() => navigate("/student/courses")}
+            onClick={() => navigate(-1)}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Courses

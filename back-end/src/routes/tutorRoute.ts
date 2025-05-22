@@ -36,27 +36,35 @@ export class TutorRoutes {
         injectedTutorController.getTutorProfile(req as CustomRequest, res)
     );
 
-        this.router.get(
+    this.router.get(
       "/notifications",
       userAuthMiddleware,
-      authorizeRole(["tutor"]),
+      authorizeRole(["tutor", "student"]), // Allow both roles
       checkUserBlocked,
-      (req: Request, res: Response) =>{
-        console.log('hyhyhyhh')
-        injectedTutorController.getNotification(req as CustomRequest, res)
-    });
+      (req: Request, res: Response) => {
+        console.log("Fetching notifications");
+        injectedTutorController.getNotification(req as CustomRequest, res);
+      }
+    );
 
-        this.router.put(
+    this.router.put(
       "/notifications/read-all",
       userAuthMiddleware,
-      authorizeRole(["tutor"]),
+      authorizeRole(["tutor", "student"]), // Allow both roles
       checkUserBlocked,
-
       (req: Request, res: Response) =>
         injectedTutorController.markAllNotificationsAsRead(req as CustomRequest, res)
     );
 
-
+    this.router.put(
+      "/notifications/:id/read",
+      userAuthMiddleware,
+      authorizeRole(["tutor", "student"]), // Allow both roles
+      checkUserBlocked,
+      (req: Request, res: Response) =>
+        injectedTutorController.markNotificationAsRead(req as CustomRequest, res)
+    );
+  
    
     this.router.put(
       '/editProfile',

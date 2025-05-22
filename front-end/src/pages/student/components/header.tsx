@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react"; // Added useRef
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { removeUser } from "@/redux/slice/userSlice";
 import { toast } from "sonner";
-// import { studentService } from '../../../services/studentServices/studentServices';
+import { io, Socket } from "socket.io-client";
 import {
   BookOpen,
   Heart,
@@ -18,11 +18,14 @@ import {
   Bell,
 } from "lucide-react";
 import { userAuthService } from "@/services/userServices/authServices";
-// import { tutorService } from "@/services/tutorServices/tutorService";
+import { authAxiosInstance } from "@/api/authAxiosInstance";
 
 interface User {
   name: string;
   email: string;
+  id?: string;
+  _id?: string;
+  username?: string;
 }
 
 interface Notification {
@@ -30,6 +33,10 @@ interface Notification {
   message: string;
   read: boolean;
   createdAt: string;
+  type: string;
+  communityId?: string;
+  courseTitle?: string;
+  senderId?: string;
 }
 
 const Header: React.FC = () => {
@@ -42,6 +49,93 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user.userDatas) as User | null;
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setStudentName(user.name || "Student");
+      socketRef.current = io(import.meta.env.VITE_AUTH_BASEURL, {
+        reconnection: true,
+      });
+
+      socketRef.current.on("connect", () => {
+        console.log("Socket.IO connected in Header:", socketRef.current?.id);
+      });
+
+      socketRef.current.on("receive_notification", (notification: Notification) => {
+        console.log("Received notification:", notification);
+        if (notification.senderId !== (user.id || user._id)) {
+          setNotifications((prev) => [
+            { ...notification, _id: `temp-${Date.now()}`, read: false },
+            ...prev,
+          ]);
+          setUnreadCount((prev) => prev + 1);
+        }
+      });
+
+      socketRef.current.on("connect_error", (error) => {
+        console.error("Socket.IO connection error in Header:", error);
+      });
+
+      return () => {
+        socketRef.current?.off("connect");
+        socketRef.current?.off("receive_notification");
+        socketRef.current?.off("connect_error");
+        socketRef.current?.disconnect();
+      };
+    }
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await authAxiosInstance.get("/tutor/notifications");
+      const fetchedNotifications = Array.isArray(response.data.notifications)
+        ? response.data.notifications
+        : [];
+
+      
+      setNotifications(fetchedNotifications);
+      console.log('hey helo notification',notifications)
+      setUnreadCount(fetchedNotifications.filter((n: Notification) => !n.read).length);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      toast.error("Could not load notifications");
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    if (notificationId.startsWith("temp-")) return;
+    try {
+      await authAxiosInstance.put(`/tutor/notifications/${notificationId}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      toast.error("Failed to mark notification as read");
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await authAxiosInstance.put("/tutor/notifications/read-all");
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      toast.error("Failed to update notifications");
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -55,63 +149,6 @@ const Header: React.FC = () => {
       toast.error("Failed to logout");
     }
   };
-
-  // const fetchStudentDetails = async () => {
-  //   try {
-  //     const response = await studentService.studentDetails();
-  //     setStudentName(response?.details?.name || "Student");
-  //   } catch (error) {
-  //     console.error("Failed to fetch student details:", error);
-  //     setStudentName("Student");
-  //   }
-  // };
-
-  // const fetchNotifications = async () => {
-  //   try {
-  //     const response = await tutorService.fetchNotification(); 
-  //     const fetchedNotifications = Array.isArray(response?.data.notifications)
-  //       ? response.data.notifications
-  //       : [response?.data.notifications].filter(Boolean);
-  //     setNotifications(fetchedNotifications);
-  //     setUnreadCount(fetchedNotifications.filter((n: Notification) => !n.read).length);
-  //   } catch (error) {
-  //     console.error("Failed to fetch notifications:", error);
-  //     toast.error("Could not load notifications");
-  //   }
-  // };
-
-  // const markNotificationAsRead = async (notificationId: string) => {
-  //   try {
-  //     await tutorService.markNotifiactionAsRead(notificationId); 
-  //     setNotifications((prev) =>
-  //       prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
-  //     );
-  //     setUnreadCount((prev) => Math.max(0, prev - 1));
-  //   } catch (error) {
-  //     console.error("Failed to mark notification as read:", error);
-  //   }
-  // };
-
-  // const markAllNotificationsAsRead = async () => {
-  //   try {
-  //     await tutorService.markAllNotificationAsRead(); 
-  //     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  //     setUnreadCount(0);
-  //     toast.success("All notifications marked as read");
-  //   } catch (error) {
-  //     console.error("Failed to mark all notifications as read:", error);
-  //     toast.error("Failed to update notifications");
-  //   }
-  // };
-
-  useEffect(() => {
-    if (user) {
-      // fetchStudentDetails();
-      // fetchNotifications();
-      // const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
-      // return () => clearInterval(interval);
-    }
-  }, [user]);
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -180,7 +217,7 @@ const Header: React.FC = () => {
                     <div className="p-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
                       <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Notifications</span>
                       <button
-                        // onClick={markAllNotificationsAsRead}
+                        onClick={markAllNotificationsAsRead}
                         className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         Mark all as read
@@ -189,7 +226,7 @@ const Header: React.FC = () => {
                     {notifications.map((notification) => (
                       <button
                         key={notification._id}
-                        // onClick={() => markNotificationAsRead(notification._id)}
+                        onClick={() => markNotificationAsRead(notification._id)}
                         className={`flex items-start gap-2 w-full px-4 py-2 text-left text-sm ${
                           notification.read
                             ? "text-gray-500 dark:text-gray-400"
@@ -358,7 +395,7 @@ const Header: React.FC = () => {
               ) : (
                 <>
                   <button
-                    // onClick={markAllNotificationsAsRead}
+                    onClick={markAllNotificationsAsRead}
                     className="w-full text-left text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4"
                   >
                     Mark all as read
@@ -366,7 +403,7 @@ const Header: React.FC = () => {
                   {notifications.map((notification) => (
                     <button
                       key={notification._id}
-                      // onClick={() => markNotificationAsRead(notification._id)}
+                      onClick={() => markNotificationAsRead(notification._id)}
                       className={`flex items-start gap-2 w-full px-4 py-2 text-left text-sm ${
                         notification.read
                           ? "text-gray-500 dark:text-gray-400"

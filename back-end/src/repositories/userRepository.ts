@@ -1,4 +1,3 @@
-// src/repositories/user.repository.ts
 import { Types } from "mongoose";
 import { BaseRepository } from "./baseRepository";
 import { userModel } from "../models/userModel";

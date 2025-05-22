@@ -4,7 +4,7 @@ import { ITutorProfile } from '../models/tutorProfileModel';
 import { TutorRepository } from '../repositories/tutorRepository';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { MulterS3File } from '../types/multer';
-import { TNotification } from '../types/notification';
+import  TNotification  from '../types/notification';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -72,7 +72,6 @@ export class TutorService {
         throw new Error(`Failed to verify uploaded document in S3: ${error.message}`);
       }
 
-      // Get old verificationDocUrl to delete
       try {
         const currentProfile = await this.tutorRepository.getTutorProfile(tutorId);
         console.log(`Current profile for tutorId: ${tutorId}`, {
@@ -90,14 +89,12 @@ export class TutorService {
       updateData.verificationDocUrl = newVerificationDocUrl;
     }
 
-    // Log updateData before database update
     console.log(`Preparing to update profile for tutorId: -----${tutorId}`, { updateData });
 
     try {
       await this.tutorRepository.updateTutorProfile(tutorId, updateData);
       console.log(`Profile updated successfully for tutorId:------------ ${tutorId}`, { updateData });
 
-      // Delete old S3 file if it exists
       if (oldKey && newVerificationDocUrl) {
         try {
           await s3Client.send(
@@ -129,12 +126,47 @@ export class TutorService {
       throw new Error(`Failed to update tutor profile: ${error.message}`);
     }
   }
-    async markAllNotificationsAsRead(id: string): Promise<void> {
+  async markAllNotificationsAsRead(id: string): Promise<void> {
     await this.tutorRepository.markAllNotificationsAsRead(id);
   }
-    async getNotification(id: string): Promise<TNotification[] | null> {
-    const notification = await this.tutorRepository.getNotifications(id);
-    return notification;
+
+  async getNotification(id: string): Promise<TNotification[] | null> {
+    return await this.tutorRepository.getNotifications(id);
+  }
+
+  async markNotificationAsRead(userId: string, notificationId: string): Promise<void> {
+    await this.tutorRepository.markNotificationAsRead(userId, notificationId);
+  }
+
+  async sendCommunityNotifications(
+    communityId: string,
+    senderId: string,
+    message: { sender: string; content: string },
+    courseTitle: string
+  ): Promise<void> {
+    const userIds = await this.getCommunityMembers(communityId);
+    const filteredUserIds = userIds.filter((id) => id !== senderId);
+    console.log("helloowoowww from sendCommunication notification")
+
+    await this.tutorRepository.saveCommunityNotifications(
+      communityId,
+      {
+        type: "chat_message",
+        message: `${message.sender} sent a message: ${
+          message.content ? message.content.slice(0, 50) + "..." : "Sent an image"
+        }`,
+        communityId,
+        courseTitle,
+        senderId,
+        createdAt: new Date(),
+      },
+      filteredUserIds
+    );
+  }
+
+  private async getCommunityMembers(communityId: string): Promise<string[]> {
+
+    return [];
   }
   
 }

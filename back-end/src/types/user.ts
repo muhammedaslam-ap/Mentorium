@@ -33,7 +33,7 @@ export type TUserModel = {
   isAccepted: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  _id?: Types.ObjectId; // Optional for creation, required in documents
+  _id?: Types.ObjectId; 
 };
 
 

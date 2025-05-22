@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { User, BookOpen, Heart, Settings, LogOut, LayoutDashboard, BookOpenCheck } from 'lucide-react'
+import { User, BookOpen, Heart, Settings, LogOut, MessageCircle, BookOpenCheck } from 'lucide-react'
 import { useNavigate, useLocation } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { useState, useEffect } from "react"
@@ -41,9 +41,9 @@ export function Sidebar({ sidebarOpen }) {
       disabled: false,
     },
     { icon: <Heart className="h-4 w-4" />, name: "Wishlist", path: "/student/wishlist", disabled: false },
-    { icon: <Heart className="h-4 w-4" />, name: "Chat", path: "/community", disabled: false },
+    { icon: <MessageCircle className="h-4 w-4" />, name: "Community Chat", path: "/community", disabled: false },
 
-    { icon: <Settings className="h-4 w-4" />, name: "Settings", path: "/student/settings", disabled: false },
+    // { icon: <Settings className="h-4 w-4" />, name: "Settings", path: "/student/settings", disabled: false },
   ]
 
   const handleLogout = async () => {

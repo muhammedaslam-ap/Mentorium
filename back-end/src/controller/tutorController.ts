@@ -18,13 +18,13 @@ const s3Client = new S3Client({
 export class TutorController {
   constructor(private tutorService: TutorService) {}
 
-    async getNotification(req: CustomRequest, res: Response) {
+   async getNotification(req: CustomRequest, res: Response) {
     try {
-      const user = (req as CustomRequest).user;
+      const user = req.user;
       const { id } = user;
       const notifications = await this.tutorService.getNotification(id);
 
-      res.status(HTTP_STATUS.CREATED).json({
+      res.status(HTTP_STATUS.OK).json({
         success: true,
         message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
         notifications,
@@ -32,7 +32,7 @@ export class TutorController {
     } catch (error) {
       if (error instanceof CustomError) {
         res.status(error.statusCode).json({
-          successs: false,
+          success: false,
           message: error.message,
         });
         return;
@@ -44,16 +44,14 @@ export class TutorController {
     }
   }
 
-    async markAllNotificationsAsRead(req: CustomRequest, res: Response) {
+  async markAllNotificationsAsRead(req: CustomRequest, res: Response) {
     try {
-      
-      const id = (req as CustomRequest).user.id;
-
+      const id = req.user.id;
       await this.tutorService.markAllNotificationsAsRead(id);
 
-      res.status(HTTP_STATUS.CREATED).json({
+      res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        message: SUCCESS_MESSAGES.UPDATE_SUCCESS,
       });
     } catch (error) {
       if (error instanceof CustomError) {
@@ -69,6 +67,29 @@ export class TutorController {
     }
   }
 
+  async markNotificationAsRead(req: CustomRequest, res: Response) {
+    try {
+      const { id } = req.user;
+      const notificationId = req.params.id;
+      await this.tutorService.markNotificationAsRead(id, notificationId);
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: SUCCESS_MESSAGES.UPDATE_SUCCESS,
+      });
+    } catch (error) {
+      if (error instanceof CustomError) {
+        res
+          .status(error.statusCode)
+          .json({ success: false, message: error.message });
+        return;
+      }
+      console.log(error);
+      res
+        .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+  }
 
   async addTutorProfile(req: CustomRequest, res: Response): Promise<void> {
     try {

@@ -1,11 +1,16 @@
-import { Types } from "mongoose"
 
 
-export type TNotification ={
-    userId:string | Types.ObjectId,
-    type:string,
-    message:string,
-    reason:string,
-    read:boolean,
-    createdAt:Date
+interface TNotification {
+  _id: string;
+  userId: string;
+  type: "approval" | "rejection" | "chat_message";
+  message: string;
+  reason?: string | null;
+  read: boolean;
+  createdAt: Date;
+  communityId?: string |null;
+  courseTitle?: string |null;
+  senderId?: string |null;
 }
+
+export default TNotification
