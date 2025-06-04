@@ -22,4 +22,4 @@ const userSchema = new Schema<TUserDocument>(
   { timestamps: true }
 );
 
-export const userModel: Model<TUserDocument> = model<TUserDocument>("User", userSchema);
+export const userModel: Model<TUserDocument> = model<TUserDocument>("user", userSchema);

@@ -39,7 +39,7 @@ export class PurchaseController {
   async checkEnrollment(req: Request, res: Response) {
     try {
       const user = (req as CustomRequest).user;
-      console.log("here im---------------------------->",user)
+      console.log("here im------>",user)
       if (!user?.id) {
         throw new Error( ERROR_MESSAGES.UNAUTHORIZED_ACCESS);
       }
@@ -112,4 +112,25 @@ export class PurchaseController {
       });
     }
   }
+
+    async myPurchaseHistory(req: CustomRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+      }
+
+      const history = await this._purchaseService.getPurchaseHistory(userId);
+      console.log('haro haro hara',history)
+      res.status(200).json({
+        success: true,
+        message: "Purchase history retrieved",
+        history
+      });
+    } catch (error) {
+      console.error("Purchase history error:", error);
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+  }
+
 }

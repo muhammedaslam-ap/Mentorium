@@ -176,6 +176,33 @@ export class TutorController {
     }
   }
 
+   async getEnrolledStudent(req:CustomRequest,res:Response){
+      try {
+
+        const tutorId = (req as CustomRequest).user.id;
+        const { students, totalRevenue } =
+          await this.tutorService.getEnrolledStudent(tutorId);
+          res.status(HTTP_STATUS.CREATED).json({
+            success: true,
+            message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+            students,
+            totalRevenue,
+          });
+      } catch (error) {
+        if (error instanceof CustomError) {
+          res
+            .status(error.statusCode)
+            .json({ success: false, message: error.message });
+          return;
+        }
+        console.log(error);
+        res
+          .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+          .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+      }
+    }
+
+
   async getTutorProfile(req: CustomRequest, res: Response): Promise<void> {
     try {
       const tutorId = req.user?.id;
@@ -245,6 +272,25 @@ export class TutorController {
     } catch (error: any) {
       console.error('Error generating pre-signed URL:', error.message);
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+  }
+
+  async tutorProfile(req: CustomRequest, res: Response): Promise<void> {
+    try {
+      const { tutorId } = req.params;
+
+      const data = await this.tutorService.getTutorProfileWithCourses(tutorId);
+      res.status(200).json({
+        success: true,
+        data,
+      });
+
+      console.log("hyhyhyhyhyhyhy",data)
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Something went wrong",
+      });
     }
   }
 }

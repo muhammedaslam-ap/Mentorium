@@ -68,12 +68,16 @@ export class authRoutes{
     });
 
 
-        this.router.post("/me", async (req: Request, res: Response) => {
+        this.router.get("/me/:userId", async (req: Request, res: Response) => {
         try {
+            console.log("📦 User data fetched 1")
             await injectedAuthController.findUserById(req, res);
         } catch (error) {
-            res.status(500).json({ error: "An error occurred while resetting the password." });
+            res.status(500).json({ error: "An error occurred while checking tutor" });
         }
     });
+
+  
+    
 }
 }

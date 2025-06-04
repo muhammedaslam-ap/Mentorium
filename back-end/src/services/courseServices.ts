@@ -1,7 +1,7 @@
 import { ICourseService } from "../interfaces/serviceInterface/IcourseServices";
 import { CourseRepository } from "../repositories/courseRepository";
 import { TCourseAdd } from "../types/course";
-import { TCourseFilterOptions } from "../types/user";
+import { TCourseFilterOptions, TStudent, TUserModel } from "../types/user";
 import { createSecureUrl } from "../utils/cloudinaryURL";
 
 export class CourseService implements ICourseService {
@@ -55,6 +55,17 @@ export class CourseService implements ICourseService {
     tutorId: string
   ): Promise<void> {
     await this._courseRepository.addCourse(data, thumbnail, tutorId);
+  }
+  
+  async getCourseDetails(courseId: string): Promise<TCourseAdd | null> {
+      return this._courseRepository.getCourseDetails(courseId)
+  }
+
+
+  
+  async getAllStudents(courseId: string): Promise<TUserModel[]> {
+    console.log("suiii",courseId)
+    return this._courseRepository.getAllStudents(courseId);
   }
 
   async getTutorCourses(

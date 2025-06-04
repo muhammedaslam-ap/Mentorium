@@ -146,17 +146,21 @@ export class AuthController {
       }
     }
 
-    async findUserById(req:Request,res:Response){
-      try {
-        const {userId} = req.body;
-        const userData = await this._authService.findByIdWithProfile(userId);
-
-        res.status(HTTP_STATUS.OK).json({message:"Data retrieved",userData})
-        
-      } catch (error:any) {
-         res.status(error.status || 500).json({ message: error.message });
-      }
+ async findUserById(req: Request, res: Response) {
+  try {
+    const userId = req.params.userId; 
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required in route params" });
     }
+    const userData = await this._authService.findByIdWithProfile(userId);
+    console.log("✅ User data fetched:", userData);
+
+    res.status(200).json({ message: "Data retrieved", userData });
+  } catch (error: any) {
+    res.status(error.status || 500).json({ message: error.message });
+  }
+}
+
 
   
 }

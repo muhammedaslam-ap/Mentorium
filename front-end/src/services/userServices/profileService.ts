@@ -35,9 +35,9 @@ export interface IProfileUpdateResponse {
 
 export const profileService = {
   // Fetch logged-in user details
-  async userDetails(userId): Promise<IUserDetailsResponse> {
+  async userDetails(userId :string): Promise<IUserDetailsResponse> {
     try {
-      const response = await authAxiosInstance.get("/me",{userId});
+      const response = await authAxiosInstance.get(`/auth/me/${userId}`, );
       return response.data;
     } catch (error) {
         if (axios.isAxiosError(error)) {

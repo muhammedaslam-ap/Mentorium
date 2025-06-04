@@ -48,7 +48,6 @@ export class CourseRoutes {
       authorizeRole(["tutor"]),
       checkUserBlocked,
       (req: Request, res: Response) => {
-        //   console.log("GET /courses/:courseId:", { params: req.params, tutor: req. });
         injectedCourseController.getCourseById(req as CustomRequest, res);
       }
     );
@@ -72,6 +71,18 @@ export class CourseRoutes {
       (req: Request, res: Response) =>
         injectedCourseController.deleteCourse(req as CustomRequest, res)
     );
+
+
+      this.router.get(
+        "/:courseId/all-students",
+        userAuthMiddleware,
+        authorizeRole(["student", "tutor"]),
+        checkUserBlocked,
+        (req: Request, res: Response) =>{
+          injectedCourseController.getAllStudents(req as CustomRequest, res)
+      });
+
+
 
   
   }

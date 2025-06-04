@@ -198,6 +198,36 @@ export class CourseController {
     }
   }
 
+
+ async getAllStudents(req: CustomRequest, res: Response) {
+    try {
+      const { courseId } = req.params;
+
+      if (!courseId) {
+        return res.status(400).json({
+          success: false,
+          message: "Course ID is required",
+        });
+      }
+
+
+      const students = await this._courseService.getAllStudents(courseId);
+      console.log("HYYYYYYYYY",students)
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        students,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
+    }
+  }
+
  async getAllCourses(req: CustomRequest, res: Response) {
   try {
     const page = parseInt(req.query.page as string) || 1;

@@ -15,7 +15,7 @@ interface ProfileResponse {
     specialization?: string | null;
     phone?: string | null;
     bio?: string | null;
-    isAccepted?: boolean | null; // Maps to approvalStatus
+    isAccepted?: boolean | null; 
     rejectionReason?: string | null;
     verificationDocUrl?: string | null;
   } | null;

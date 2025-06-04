@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { Send, Menu, Check, CheckCheck, Image, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Header from "../components/header";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
+import { useInView } from "react-intersection-observer";
+import React from "react";
 
 interface Message {
   _id?: string;
@@ -23,54 +25,391 @@ interface Community {
   course: string;
   messages: Message[];
   members?: number;
-  activeNow?: number;
+  latestMessage: { content: string; timestamp: string; imageUrl?: string } | null;
+  unreadCount: number;
 }
+
+// Skeleton Loader for Communities
+const CommunitySkeleton = () => (
+  <div className="p-4 border-b border-indigo-50 animate-pulse">
+    <div className="h-5 bg-indigo-100 rounded w-3/4 mb-2"></div>
+    <div className="h-4 bg-indigo-50 rounded w-1/2 mb-2"></div>
+    <div className="flex items-center gap-2">
+      <div className="h-3 bg-indigo-50 rounded w-20"></div>
+    </div>
+  </div>
+);
+
+// Skeleton Loader for Messages
+const MessageSkeleton = ({ isOwnMessage }: { isOwnMessage: boolean }) => (
+  <div
+    className={cn(
+      "flex w-full gap-2 items-end animate-pulse",
+      isOwnMessage ? "justify-end" : "justify-start"
+    )}
+  >
+    <div
+      className={cn(
+        "max-w-md rounded-2xl p-4 shadow-md",
+        isOwnMessage
+          ? "bg-indigo-200 rounded-br-none"
+          : "bg-indigo-50 rounded-bl-none"
+      )}
+    >
+      <div className="flex items-baseline justify-between mb-1.5">
+        <div className="h-4 bg-indigo-100 rounded w-20"></div>
+        <div className="h-3 bg-indigo-100 rounded w-16"></div>
+      </div>
+      <div className="h-5 bg-indigo-100 rounded w-48"></div>
+    </div>
+  </div>
+);
+
+// Memoized MessageItem component
+const MessageItem = React.memo(
+  ({
+    message,
+    userName,
+    formatTimestamp,
+  }: {
+    message: Message;
+    userName: string;
+    formatTimestamp: (timestamp: string) => string;
+  }) => (
+    <div
+      className={cn(
+        "flex w-full gap-2 items-end animate-fade-in",
+        message.sender === userName ? "justify-end" : "justify-start"
+      )}
+    >
+      <div
+        className={cn(
+          "max-w-md rounded-2xl p-4 shadow-md message-bubble",
+          message.sender === userName
+            ? "bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-br-none"
+            : "bg-white text-slate-800 rounded-bl-none border border-indigo-100"
+        )}
+      >
+        <div className="flex items-baseline justify-between mb-1.5">
+          <span
+            className={cn(
+              "font-medium text-sm",
+              message.sender === userName ? "text-indigo-100" : "text-indigo-700"
+            )}
+          >
+            {message.sender}
+          </span>
+          <span
+            className={cn(
+              "text-xs ml-2 flex items-center gap-1",
+              message.sender === userName ? "text-indigo-200" : "text-slate-400"
+            )}
+          >
+            {formatTimestamp(message.timestamp)}
+            {message.sender === userName && message.status && (
+              <span className="ml-1">
+                {message.status === "delivered" ? (
+                  <Check className="h-3 w-3" />
+                ) : message.status === "read" ? (
+                  <CheckCheck className="h-3 w-3" />
+                ) : null}
+              </span>
+            )}
+          </span>
+        </div>
+        {message.imageUrl ? (
+          <img
+            src={message.imageUrl}
+            alt="Shared image"
+            className="max-w-full h-auto rounded-lg mt-2 border border-indigo-100 shadow-sm"
+            loading="lazy"
+          />
+        ) : (
+          <p className="text-[15px] leading-relaxed">{message.content}</p>
+        )}
+      </div>
+    </div>
+  )
+);
+
+// Memoized CommunityItem component
+const CommunityItem = React.memo(
+  ({
+    community,
+    selectedCommunity,
+    handleSelectCommunity,
+    formatTimestamp,
+  }: {
+    community: Community;
+    selectedCommunity: Community | null;
+    handleSelectCommunity: (community: Community) => void;
+    formatTimestamp: (timestamp: string) => string;
+  }) => (
+    <div
+      className={cn(
+        "p-4 cursor-pointer transition-all duration-200",
+        "hover:bg-indigo-50 border-b border-indigo-50",
+        selectedCommunity?.id === community.id
+          ? "bg-indigo-100 border-l-4 border-l-indigo-600"
+          : "border-l-4 border-l-transparent"
+      )}
+      onClick={() => handleSelectCommunity(community)}
+    >
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="font-semibold text-indigo-900">{community.name}</h3>
+          <p className="text-sm text-slate-600 mt-1">{community.course}</p>
+        </div>
+        {community.unreadCount > 0 && (
+          <span
+            className={cn(
+              "bg-gradient-to-r from-indigo-500 to-indigo-600",
+              "text-white text-sm font-medium rounded-full px-2.5 py-0.5",
+              "shadow-sm opacity-90",
+              "hover:scale-110 hover:brightness-110",
+              "transition-all duration-200"
+            )}
+          >
+            {community.unreadCount}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center mt-2 text-xs text-slate-500">
+        {community.members !== undefined && <span>{community.members} members</span>}
+        {community.latestMessage && (
+          <>
+            {community.members !== undefined && <span className="mx-2">•</span>}
+            <span>{formatTimestamp(community.latestMessage.timestamp)}</span>
+          </>
+        )}
+      </div>
+    </div>
+  )
+);
+
+// Students Modal Component
+const StudentsModal = ({
+  students,
+  onClose,
+}: {
+  students: string[];
+  onClose: () => void;
+}) => (
+   <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl border-0 rounded-2xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl font-bold">
+                Community Members
+              </CardTitle>
+              <p className="text-indigo-100 text-sm mt-1">
+                {students.length} {students.length === 1 ? 'member' : 'members'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+              aria-label="Close"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-0">
+          {students.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-6">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No students enrolled</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-center">
+                When students enroll in this course, they'll appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="max-h-96 overflow-y-auto custom-scrollbar">
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {students.map((name, index) => {
+                  const initials = name
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase())
+                    .join('')
+                    .substring(0, 2);
+                  
+                  const colors = [
+                    'bg-blue-500',
+                    'bg-green-500',
+                    'bg-purple-500',
+                    'bg-pink-500',
+                    'bg-indigo-500',
+                    'bg-red-500',
+                    'bg-yellow-500',
+                    'bg-teal-500',
+                    'bg-orange-500',
+                    'bg-cyan-500'
+                  ];
+                  
+                  const avatarColor = colors[index % colors.length];
+                  
+                  return (
+                    <div key={index} className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                      <div className={`w-12 h-12 ${avatarColor} rounded-full flex items-center justify-center flex-shrink-0 shadow-md`}>
+                        <span className="text-white font-bold text-lg">
+                          {initials}
+                        </span>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+                          {name}
+                        </h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Members • Enrolled
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-black-500 rounded-full"></div>
+                        {/* <span className="text-xs text-gray-400 dark:text-gray-500">Active</span> */}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </CardContent>
+        
+        {students.length > 0 && (
+          <div className="border-t border-gray-100 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>Student information is private and secure</span>
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+);
 
 export function CommunityChat() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userName, setUserName] = useState<string>("");
+  const [isLoadingCommunities, setIsLoadingCommunities] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
+  const [students, setStudents] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { ref: loadMoreRef, inView } = useInView();
+  const processedCommunityIds = useRef<Set<string>>(new Set());
 
   const user = useSelector((state: any) => state.user.userDatas);
   const userID = user.id || user._id || "";
-  useEffect(() => {
-    setUserName(user?.username || "");
-    console.log("USER IN THE FRONTEND", user); // Debug sender
-  }, [user]);
 
   useEffect(() => {
-    const fetchCommunities = async () => {
-      try {
-        const enrolledCoursesData = await authAxiosInstance.get("/purchase/enrolledCourses");
-        const enrolledCourses = enrolledCoursesData.data.courses;
-        console.log("ENROLLED COURSES", enrolledCourses);
-        const newCommunities: Community[] = enrolledCourses.map((course: any) => ({
-          id: course._id,
-          name: `${course.title} Community`,
-          course: course.title,
-          messages: [],
-          members: course.enrollments || 100,
-          activeNow: Math.floor(Math.random() * 20) + 5,
-        }));
-        setCommunities(newCommunities);
-        if (newCommunities.length > 0) {
-          setSelectedCommunity(newCommunities[0]);
+    setUserName(user?.username || "");
+    console.log("USER IN THE FRONTEND", user);
+  }, [user]);
+
+  const fetchCommunities = useCallback(async () => {
+    setIsLoadingCommunities(true);
+    try {
+      const enrolledCoursesData = await authAxiosInstance.get("/purchase/enrolledCourses");
+      const enrolledCourses = enrolledCoursesData.data.courses;
+      console.log("ENROLLED COURSES", enrolledCourses);
+
+      // Clear processed IDs before fetching new communities
+      processedCommunityIds.current.clear();
+
+      // Deduplicate communities by course._id
+      const newCommunities: Community[] = enrolledCourses.reduce((acc: Community[], course: any) => {
+        if (!processedCommunityIds.current.has(course._id)) {
+          processedCommunityIds.current.add(course._id);
+          acc.push({
+            id: course._id,
+            name: `${course.title} Community`,
+            course: course.title,
+            messages: [],
+            members: course.enrollments,
+            latestMessage: null,
+            unreadCount: 0,
+          });
         }
-      } catch (error) {
-        console.error("Error fetching enrolled courses:", error);
-        toast.error("Failed to load communities");
+        return acc;
+      }, []);
+
+      setCommunities(newCommunities);
+      if (newCommunities.length > 0) {
+        setSelectedCommunity(newCommunities[0]);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching enrolled courses:", error);
+      toast.error("Failed to load communities");
+    } finally {
+      setIsLoadingCommunities(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       fetchCommunities();
     }
-  }, [user]);
+  }, [user, fetchCommunities]);
+
+  // Sort communities by latest message timestamp
+  const sortedCommunities = useMemo(() => {
+    return [...communities].sort((a, b) => {
+      const aTime = a.latestMessage ? new Date(a.latestMessage.timestamp).getTime() : 0;
+      const bTime = b.latestMessage ? new Date(b.latestMessage.timestamp).getTime() : 0;
+      return bTime - aTime; // Newest first
+    });
+  }, [communities]);
+
+  const fetchStudents = useCallback(async (courseId: string) => {
+    try {
+      const response = await authAxiosInstance.get(`/courses/${courseId}/all-students`);
+      const studentsData = (response.data.students || [])
+        .map((student: { name?: string }) => student.name)
+        .filter((name: string | undefined): name is string => typeof name === "string");
+      setStudents(studentsData);
+      console.log("FRONT END STUDENT NAMES:", studentsData);
+      setIsStudentsModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      toast.error("Failed to load enrolled students");
+    }
+  }, []);
+
+  const handleHeaderClick = useCallback(() => {
+    if (selectedCommunity) {
+      fetchStudents(selectedCommunity.id);
+    }
+  }, [selectedCommunity, fetchStudents]);
 
   useEffect(() => {
     if (!userID) {
@@ -85,69 +424,97 @@ export function CommunityChat() {
 
     socketRef.current.on("connect", () => {
       console.log("Socket.IO connected:", socketRef.current?.id);
-      // Emit join_community after connection
       if (selectedCommunity) {
         console.log("Emitting join_community after connect:", selectedCommunity.id);
         socketRef.current?.emit("join_community", selectedCommunity.id);
+        setIsLoadingMessages(true);
       }
     });
 
     socketRef.current.on("connect_error", (error) => {
       console.error("Socket.IO connection error:", error);
       toast.error("Failed to connect to chat server");
+      setIsLoadingMessages(false);
     });
 
     socketRef.current.on("error", (error: { message: string }) => {
       console.error("Socket.IO error:", error);
       toast.error(error.message);
+      setIsLoadingMessages(false);
     });
 
     socketRef.current.on("message_history", (history: Message[]) => {
       console.log("Received message history:", history);
       console.log("Message history count:", history.length);
-      setMessages(
-        history.map((msg) => ({
-          _id: msg._id,
-          sender: msg.sender,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          status: msg.status,
-          imageUrl: msg.imageUrl,
-        }))
-      );
+      setMessages(history);
+      if (selectedCommunity) {
+        const latestMsg = history.length > 0 ? history[history.length - 1] : null;
+        setCommunities((prev) =>
+          prev.map((community) =>
+            community.id === selectedCommunity.id
+              ? {
+                  ...community,
+                  messages: history,
+                  latestMessage: latestMsg
+                    ? {
+                        content: latestMsg.content,
+                        timestamp: latestMsg.timestamp,
+                        imageUrl: latestMsg.imageUrl,
+                      }
+                    : null,
+                  unreadCount: 0,
+                }
+              : community
+          )
+        );
+      }
+      setIsLoadingMessages(false);
     });
 
     socketRef.current.on("receive_message", (message: Message) => {
       console.log("Received message:", message);
-      setMessages((prev) => {
-        // Skip if message is from the current user (already added locally)
-        if (message.sender === userName) {
-          console.log("Skipping sender's own message:", message);
+      if (message.sender === userName) {
+        console.log("Skipping sender's own message:", message);
+        return;
+      }
+      if (message._id && messages.some((msg) => msg._id === message._id)) {
+        console.log("Skipping duplicate message with _id:", message._id);
+        return;
+      }
+
+      setMessages((prev) => [...prev, message]);
+      setCommunities((prev) => {
+        const communityIndex = prev.findIndex((c) => c.id === selectedCommunity?.id);
+        if (communityIndex === -1) {
+          console.log("Community not found for message:", message);
           return prev;
         }
-        // Skip if message._id exists in prev (prevent duplicates)
-        if (message._id && prev.some((msg) => msg._id === message._id)) {
-          console.log("Skipping duplicate message with _id:", message._id);
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            _id: message._id,
-            sender: message.sender,
+        const updatedCommunities = [...prev];
+        updatedCommunities[communityIndex] = {
+          ...updatedCommunities[communityIndex],
+          messages: [...updatedCommunities[communityIndex].messages, message],
+          latestMessage: {
             content: message.content,
             timestamp: message.timestamp,
-            status: message.status,
             imageUrl: message.imageUrl,
           },
+          unreadCount:
+            selectedCommunity?.id === updatedCommunities[communityIndex].id
+              ? updatedCommunities[communityIndex].unreadCount
+              : updatedCommunities[communityIndex].unreadCount + 1,
+        };
+        return [
+          updatedCommunities[communityIndex],
+          ...updatedCommunities.slice(0, communityIndex),
+          ...updatedCommunities.slice(communityIndex + 1),
         ];
       });
     });
 
-    // Emit join_community if selectedCommunity changes while connected
     if (selectedCommunity && socketRef.current?.connected) {
       console.log("Emitting join_community on selectedCommunity change:", selectedCommunity.id);
       socketRef.current.emit("join_community", selectedCommunity.id);
+      setIsLoadingMessages(true);
     }
 
     return () => {
@@ -160,25 +527,41 @@ export function CommunityChat() {
     };
   }, [selectedCommunity?.id, userID, userName]);
 
-  const scrollToBottom = () => {
+  const messagesPerPage = 20;
+  useEffect(() => {
+    setVisibleMessages(messages.slice(0, messagesPerPage));
+  }, [messages]);
+
+  useEffect(() => {
+    if (inView && visibleMessages.length < messages.length) {
+      setVisibleMessages((prev) => messages.slice(0, prev.length + messagesPerPage));
+    }
+  }, [inView, messages]);
+
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
-  const handleSelectCommunity = (community: Community) => {
+  const handleSelectCommunity = useCallback((community: Community) => {
     setSelectedCommunity(community);
     setMessages([]);
+    setVisibleMessages([]);
     setIsSidebarOpen(false);
     if (socketRef.current?.connected) {
       console.log("Emitting join_community on community select:", community.id);
       socketRef.current.emit("join_community", community.id);
+      setIsLoadingMessages(true);
     }
-  };
+    setCommunities((prev) =>
+      prev.map((c) => (c.id === community.id ? { ...c, unreadCount: 0 } : c))
+    );
+  }, []);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     if (!newMessage.trim()) {
       toast.error("Message cannot be empty");
       return;
@@ -206,11 +589,29 @@ export function CommunityChat() {
     };
     console.log("Sending message:", newMsg);
     setMessages((prev) => [...prev, newMsg]);
+    setCommunities((prev) => {
+      const communityIndex = prev.findIndex((c) => c.id === selectedCommunity.id);
+      if (communityIndex === -1) return prev;
+      const updatedCommunities = [...prev];
+      updatedCommunities[communityIndex] = {
+        ...updatedCommunities[communityIndex],
+        messages: [...updatedCommunities[communityIndex].messages, newMsg],
+        latestMessage: {
+          content: newMsg.content,
+          timestamp: newMsg.timestamp,
+        },
+        unreadCount: 0,
+      };
+      return [
+        updatedCommunities[communityIndex],
+        ...updatedCommunities.slice(0, communityIndex),
+        ...updatedCommunities.slice(communityIndex + 1),
+      ];
+    });
     socketRef.current?.emit("send_message", {
       communityId: selectedCommunity.id,
       message: newMsg,
     });
-    console.log("Emitting send_notification:", { senderId: userID, communityId: selectedCommunity.id });
     socketRef.current?.emit("send_notification", {
       communityId: selectedCommunity.id,
       courseTitle: selectedCommunity.course,
@@ -218,78 +619,122 @@ export function CommunityChat() {
       senderId: userID,
     });
     setNewMessage("");
-  };
+  }, [newMessage, userID, userName, selectedCommunity]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && userID && selectedCommunity && userName) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size must be less than 5MB");
-        return;
-      }
-      if (!file.type.startsWith("image/")) {
-        toast.error("Only image files are allowed");
-        return;
-      }
-      if (!socketRef.current?.connected) {
-        console.error("Socket not connected for image upload");
-        toast.error("Not connected to chat server. Please try again.");
-        return;
-      }
+  const handleImageUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file && userID && selectedCommunity && userName) {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("Image size must be less than 5MB");
+          return;
+        }
+        if (!file.type.startsWith("image/")) {
+          toast.error("Only image files are allowed");
+          return;
+        }
+        if (!socketRef.current?.connected) {
+          console.error("Socket not connected for image upload");
+          toast.error("Not connected to chat server. Please try again.");
+          return;
+        }
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const newMsg: Message = {
-          sender: userName,
-          content: "",
-          timestamp: new Date().toISOString(),
-          status: "sent",
+        const reader = new FileReader();
+        reader.onload = () => {
+          const newMsg: Message = {
+            sender: userName,
+            content: "",
+            timestamp: new Date().toISOString(),
+            status: "sent",
+          };
+          setMessages((prev) => [
+            ...prev,
+            { ...newMsg, imageUrl: reader.result as string },
+          ]);
+          setCommunities((prev) => {
+            const communityIndex = prev.findIndex((c) => c.id === selectedCommunity.id);
+            if (communityIndex === -1) return prev;
+            const updatedCommunities = [...prev];
+            updatedCommunities[communityIndex] = {
+              ...updatedCommunities[communityIndex],
+              messages: [
+                ...updatedCommunities[communityIndex].messages,
+                { ...newMsg, imageUrl: reader.result as string },
+              ],
+              latestMessage: {
+                content: "",
+                timestamp: newMsg.timestamp,
+                imageUrl: reader.result as string,
+              },
+              unreadCount: 0,
+            };
+            return [
+              updatedCommunities[communityIndex],
+              ...updatedCommunities.slice(0, communityIndex),
+              ...updatedCommunities.slice(communityIndex + 1),
+            ];
+          });
+          socketRef.current?.emit("send_image_message", {
+            communityId: selectedCommunity.id,
+            message: newMsg,
+            image: {
+              data: reader.result,
+              name: file.name,
+              type: file.type,
+            },
+            senderId: userID,
+          });
+          console.log("Emitting send_notification for image:", {
+            senderId: userID,
+            communityId: selectedCommunity.id,
+          });
+          socketRef.current?.emit("send_notification", {
+            communityId: selectedCommunity.id,
+            courseTitle: selectedCommunity.course,
+            message: { ...newMsg, content: "Sent an image" },
+            senderId: userID,
+          });
         };
-        setMessages((prev) => [...prev, { ...newMsg, imageUrl: reader.result as string }]);
-        socketRef.current?.emit("send_image_message", {
-          communityId: selectedCommunity.id,
-          message: newMsg,
-          image: {
-            data: reader.result,
-            name: file.name,
-            type: file.type,
-          },
-          senderId: userID,
+        reader.readAsDataURL(file);
+        event.target.value = "";
+      } else {
+        console.error("Missing required data for image upload:", {
+          userID,
+          selectedCommunity,
+          userName,
         });
-        console.log("Emitting send_notification for image:", { senderId: userID, communityId: selectedCommunity.id });
-        socketRef.current?.emit("send_notification", {
-          communityId: selectedCommunity.id,
-          courseTitle: selectedCommunity.course,
-          message: { ...newMsg, content: "Sent an image" },
-          senderId: userID,
-        });
-      };
-      reader.readAsDataURL(file);
-      event.target.value = "";
-    } else {
-      console.error("Missing required data for image upload:", { userID, selectedCommunity, userName });
-      toast.error("Unable to upload image. Please ensure you are logged in and a community is selected.");
-    }
-  };
+        toast.error(
+          "Unable to upload image. Please ensure you are logged in and a community is selected."
+        );
+      }
+    },
+    [userID, selectedCommunity, userName]
+  );
 
-  const formatTimestamp = (timestamp: string) => {
+  const formatTimestamp = useCallback((timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "numeric",
       hour12: true,
     });
-  };
+  }, []);
+
+  const memoizedCommunities = useMemo(() => sortedCommunities, [sortedCommunities]);
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <Card className="w-96 shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl font-bold text-indigo-700">Access Required</CardTitle>
+            <CardTitle className="text-2xl font-bold text-indigo-700">
+              Access Required
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-center pt-2">
             <Users className="h-16 w-16 text-indigo-500 mx-auto mb-4 opacity-80" />
-            <p className="text-slate-600 text-lg">Please log in to view your learning communities</p>
+            <p className="text-slate-600 text-lg">
+              Please log in to view your learning communities
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -298,16 +743,20 @@ export function CommunityChat() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         .animate-fade-in {
           animation: fade-in 0.3s ease-out;
         }
-        
-        /* Custom scrollbar */
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
           height: 6px;
@@ -323,8 +772,6 @@ export function CommunityChat() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(0, 0, 0, 0.25);
         }
-        
-        /* Message bubble effects */
         .message-bubble {
           transition: all 0.2s ease;
         }
@@ -332,11 +779,10 @@ export function CommunityChat() {
           transform: scale(1.01);
         }
       `}</style>
-      
+
       <Header />
-      
+
       <div className="flex flex-1 pt-0 overflow-hidden">
-        {/* Sidebar */}
         <aside
           className={cn(
             "fixed top-16 left-0 w-80 bg-white shadow-xl border-r border-indigo-100",
@@ -353,54 +799,40 @@ export function CommunityChat() {
               Connect & Learn Together
             </p>
           </div>
-          
+
           <div className="overflow-y-auto h-[calc(100vh-12rem)] custom-scrollbar">
-            {communities.length === 0 ? (
+            {isLoadingCommunities ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <CommunitySkeleton key={index} />
+                ))}
+              </div>
+            ) : memoizedCommunities.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="h-12 w-12 text-indigo-300 mx-auto mb-4" />
                 <p className="text-indigo-700 font-medium">No communities yet</p>
-                <p className="text-slate-500 text-sm mt-2 px-6">
+                <p className="text-slate-500 text-sm mt-2 px-4">
                   Enroll in courses to join their communities
                 </p>
               </div>
             ) : (
-              communities.map((community) => (
-                <div
+              memoizedCommunities.map((community) => (
+                <CommunityItem
                   key={community.id}
-                  className={cn(
-                    "p-4 cursor-pointer transition-all duration-200",
-                    "hover:bg-indigo-50 border-b border-indigo-50",
-                    selectedCommunity?.id === community.id 
-                      ? "bg-indigo-100 border-l-4 border-l-indigo-600" 
-                      : "border-l-4 border-l-transparent"
-                  )}
-                  onClick={() => handleSelectCommunity(community)}
-                >
-                  <h3 className="font-semibold text-indigo-900">
-                    {community.name}
-                  </h3>
-                  <p className="text-sm text-slate-600 mt-1">
-                    {community.course}
-                  </p>
-                  <div className="flex items-center mt-2 text-xs text-slate-500">
-                    <span>{community.members} members</span>
-                    <span className="mx-2">•</span>
-                    <span className="text-emerald-600 font-medium flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
-                      {community.activeNow} active now
-                    </span>
-                  </div>
-                </div>
+                  community={community}
+                  selectedCommunity={selectedCommunity}
+                  handleSelectCommunity={handleSelectCommunity}
+                  formatTimestamp={formatTimestamp}
+                />
               ))
             )}
           </div>
         </aside>
-        
-        {/* Main Content */}
+
         <div className="flex-1 flex flex-col min-w-0">
-          {communities.length === 0 ? (
+          {memoizedCommunities.length === 0 && !isLoadingCommunities ? (
             <div className="flex-1 flex items-center justify-center p-6">
-              <Card className="max-w-lg w-full shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+              <Card className="max-w-lg w-full shadow-lg border-0 bg-white/95 backdrop-blur-sm">
                 <CardHeader className="text-center">
                   <Users className="h-16 w-16 text-indigo-500 mx-auto mb-4 opacity-80" />
                   <CardTitle className="text-3xl font-bold text-indigo-800">
@@ -417,9 +849,11 @@ export function CommunityChat() {
             </div>
           ) : (
             <>
-              {/* Chat Header */}
               <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
-                <div className="flex items-center space-x-4">
+                <div
+                  className="flex items-center space-x-4 cursor-pointer hover:bg-indigo-50 p-2 rounded-md transition-colors"
+                  onClick={handleHeaderClick}
+                >
                   <button
                     className="md:hidden text-indigo-700 hover:text-indigo-900 bg-indigo-100 p-2 rounded-full"
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -430,91 +864,43 @@ export function CommunityChat() {
                     <h1 className="text-xl font-bold text-indigo-900">
                       {selectedCommunity?.name || "Select a Community"}
                     </h1>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       {selectedCommunity?.course || ""}
                     </p>
                   </div>
                 </div>
-                <div className="text-sm font-medium text-emerald-700 flex items-center gap-1.5 bg-emerald-50 py-1.5 px-3 rounded-full">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  {selectedCommunity?.activeNow || 0} active now
-                </div>
               </header>
 
-              {/* Messages Area */}
-              <main className="flex-1 overflow-hidden relative bg-gradient-to-b from-indigo-50/50 to-blue-50/50">
+              <main className="flex-1 overflow-hidden relative bg-gray-50">
                 <div className="absolute inset-0 overflow-y-auto px-4 py-6 custom-scrollbar">
                   <div className="max-w-3xl mx-auto space-y-6">
-                    {messages.map((message, index) => (
-                      <div
-                        key={message._id || index}
-                        className={cn(
-                          "flex w-full gap-2 items-end animate-fade-in",
-                          message.sender === userName
-                            ? "justify-end"
-                            : "justify-start"
-                        )}
-                      >
-                        {/* Message bubble */}
-                        <div
-                          className={cn(
-                            "max-w-md rounded-2xl p-4 shadow-md message-bubble",
-                            message.sender === userName
-                              ? "bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-br-none"
-                              : "bg-white text-slate-800 rounded-bl-none border border-indigo-100"
-                          )}
-                        >
-                          {/* Message header with sender and time */}
-                          <div className="flex items-baseline justify-between mb-1.5">
-                            <span className={cn(
-                              "font-medium text-sm",
-                              message.sender === userName ? "text-indigo-100" : "text-indigo-700"
-                            )}>
-                              {message.sender}
-                            </span>
-                            <span
-                              className={cn(
-                                "text-xs ml-2 flex items-center gap-1",
-                                message.sender === userName
-                                  ? "text-indigo-200"
-                                  : "text-slate-400"
-                              )}
-                            >
-                              {formatTimestamp(message.timestamp)}
-                              {message.sender === userName && message.status && (
-                                <span className="ml-1">
-                                  {message.status === "delivered" ? (
-                                    <Check className="h-3 w-3" />
-                                  ) : message.status === "read" ? (
-                                    <CheckCheck className="h-3 w-3" />
-                                  ) : null}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                          
-                          {/* Message content */}
-                          {message.imageUrl ? (
-                            <img
-                              src={message.imageUrl}
-                              alt="Shared image"
-                              className="max-w-full h-auto rounded-lg mt-2 border border-indigo-100 shadow-sm"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <p className="text-[15px] leading-relaxed">
-                              {message.content}
-                            </p>
-                          )}
-                        </div>
+                    {isLoadingMessages ? (
+                      <div className="space-y-6">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <MessageSkeleton
+                            key={index}
+                            isOwnMessage={index % 2 === 0}
+                          />
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      visibleMessages.map((message, index) => (
+                        <MessageItem
+                          key={message._id || index}
+                          message={message}
+                          userName={userName}
+                          formatTimestamp={formatTimestamp}
+                        />
+                      ))
+                    )}
+                    {visibleMessages.length < messages.length && (
+                      <div ref={loadMoreRef} className="h-10" />
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                 </div>
               </main>
 
-              {/* Message Input */}
               <div className="bg-white border-t p-4 shadow-sm">
                 <div className="max-w-3xl mx-auto">
                   <div className="flex items-center gap-2">
@@ -526,7 +912,7 @@ export function CommunityChat() {
                         "bg-indigo-100 text-indigo-700",
                         "hover:bg-indigo-200",
                         "transition-all duration-200",
-                        "focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                        "focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       )}
                       aria-label="Upload image"
                     >
@@ -547,9 +933,9 @@ export function CommunityChat() {
                       placeholder="Type your message..."
                       className={cn(
                         "flex-1 px-4 py-3 rounded-full",
-                        "bg-indigo-50 border border-indigo-100",
+                        "bg-indigo-50 border border-indigo-200",
                         "focus:ring-2 focus:ring-indigo-500 focus:outline-none",
-                        "placeholder-slate-400 text-slate-800 transition-all duration-200"
+                        "placeholder-gray-400 text-gray-800 transition-all duration-200"
                       )}
                     />
                     <button
@@ -573,8 +959,16 @@ export function CommunityChat() {
               </div>
             </>
           )}
+          {isStudentsModalOpen && (
+            <StudentsModal
+              students={students}
+              onClose={() => setIsStudentsModalOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>
   );
 }
+
+export default React.memo(CommunityChat);

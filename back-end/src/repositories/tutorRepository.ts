@@ -1,16 +1,18 @@
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { ITutorRepository } from "../interfaces/repositoryInterface/ItutorRepository";
 import { ITutorProfile, tutorProfileModel } from "../models/tutorProfileModel";
 import { userModel } from "../models/userModel";
-import { TTutorModel, TTutorProfileInput } from "../types/tutor";
+import { TTutorModel, TTutorProfileInput, TutorProfileWithCourses } from "../types/tutor";
 import { NotificationModel } from "../models/notificationModel";
 import { purchaseModel } from "../models/buyCourseModal";
+import { courseModel } from "../models/course";
+import { TStudent } from "../types/user";
 
 
 interface TNotification {
   _id: string;
   userId: string;
-  type: "approval" | "rejection" | "chat_message";
+  type: "approval" | "rejection" | "chat_message" |"call_request";
   message: string;
   reason?: string | null;
   read: boolean;
@@ -64,6 +66,156 @@ export class TutorRepository implements ITutorRepository {
       { rejectionReason: reason, approvalStatus: "rejected" }
     );
   }
+
+
+async getEnrolledStudent(
+  tutorId: string
+  ): Promise<{ students: TStudent[]; totalRevenue: number }> {
+  console.log('getEnrolledStudent called with tutorId:', tutorId);
+
+  if (!Types.ObjectId.isValid(tutorId)) {
+    console.log('Invalid tutorId:', tutorId);
+    return { students: [], totalRevenue: 0 };
+  }
+
+  const tutorObjectId = new mongoose.Types.ObjectId(tutorId);
+
+  // Step 1: Find all courses created by this tutor
+  const tutorCourses = await courseModel.find({ tutorId: tutorObjectId });
+  console.log('Tutor courses found:', tutorCourses.length, JSON.stringify(tutorCourses.map(c => ({
+    _id: c._id.toString(),
+    title: c.title,
+    tutorId: c.tutorId.toString(),
+  })), null, 2));
+
+  // If tutor has no courses, return empty array and zero revenue
+  if (!tutorCourses.length) {
+    console.log('No courses found for tutorId:', tutorId);
+    return { students: [], totalRevenue: 0 };
+  }
+
+  const courseMap = new Map<string, string>();
+  tutorCourses.forEach((course) => {
+    courseMap.set(course._id.toString(), course.title);
+  });
+
+  const courseIds = tutorCourses.map((course) => course._id);
+  console.log('Course IDs:', courseIds.map(id => id.toString()));
+
+  // Step 2: Find purchases for these courses
+  const purchases = await purchaseModel.find({
+    "purchase.courseId": { $in: courseIds },
+  });
+  console.log('Purchases found:', purchases.length, JSON.stringify(purchases.map(p => ({
+    userId: p.userId?.toString(),
+    purchase: p.purchase.map(item => ({
+      courseId: item.courseId?.toString(),
+      amount: item.amount,
+      createdAt: item.createdAt,
+    })),
+  })), null, 2));
+
+  let totalRevenue = 0;
+  const studentDataMap = new Map<
+    string,
+    {
+      name: string;
+      email: string;
+      role: string;
+      courses: { course: string; purchaseDate: Date; amount: number }[];
+    }
+  >();
+
+  purchases.forEach((purchase) => {
+    if (!purchase.userId) {
+      console.log('Skipping purchase with no userId:', purchase._id.toString());
+      return;
+    }
+
+    const userId = purchase.userId.toString();
+    purchase.purchase.forEach((item) => {
+      if (!item.courseId) {
+        console.log('Skipping purchase item with no courseId:', item.orderId);
+        return;
+      }
+
+      if (courseIds.some((courseId) => courseId.equals(item.courseId))) {
+        const courseIdStr = item.courseId.toString();
+        const courseName = courseMap.get(courseIdStr) || "Unknown Course";
+        const amount = item.amount || 0;
+
+        // Add to total revenue
+        totalRevenue += amount;
+        console.log('Adding to totalRevenue:', { courseId: courseIdStr, amount, totalRevenue });
+
+        if (!studentDataMap.has(userId)) {
+          studentDataMap.set(userId, {
+            name: "",
+            email: "",
+            role: "",
+            courses: [],
+          });
+        }
+
+        studentDataMap.get(userId)!.courses.push({
+          course: courseName,
+          purchaseDate: item.createdAt || purchase._id.getTimestamp(),
+          amount: amount,
+        });
+      }
+    });
+  });
+
+  console.log('Student data map after purchases:', studentDataMap.size, JSON.stringify([...studentDataMap], null, 2));
+
+  // Step 4: Fetch student details for these IDs
+  const studentIds = Array.from(studentDataMap.keys());
+  const studentObjectIds = studentIds.map(
+    (id) => new mongoose.Types.ObjectId(id)
+  );
+
+  const students = await userModel.find(
+    {
+      _id: { $in: studentObjectIds },
+    },
+    { name: 1, email: 1, role: 1 }
+  );
+  console.log('Students fetched:', students.length, JSON.stringify(students.map(s => ({
+    _id: s._id.toString(),
+    name: s.name,
+    email: s.email,
+    role: s.role,
+  })), null, 2));
+
+  // Step 5: Combine student details with course purchase data
+  students.forEach((student) => {
+    const userId = student._id.toString();
+    if (studentDataMap.has(userId)) {
+      studentDataMap.get(userId)!.name = student.name || 'Unknown';
+      studentDataMap.get(userId)!.email = student.email || 'N/A';
+      studentDataMap.get(userId)!.role = student.role || 'student';
+    }
+  });
+
+  // Step 6: Format the response according to TStudent type
+  const result: TStudent[] = [];
+  studentDataMap.forEach((data, userId) => {
+    data.courses.forEach((courseData) => {
+      result.push({
+        _id: userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        course: courseData.course,
+        purchaseDate: courseData.purchaseDate,
+        amount: courseData.amount,
+      });
+    });
+  });
+
+  console.log('Final result:', { students: result.length, totalRevenue }, JSON.stringify(result, null, 2));
+  return { students: result, totalRevenue };
+}
 
   async getTutorDetails(id: string): Promise<TTutorModel | null> {
     if (!Types.ObjectId.isValid(id)) return null;
@@ -238,5 +390,37 @@ export class TutorRepository implements ITutorRepository {
       throw new Error(`Failed to save notifications: ${error.message}`);
     }
   }
+
+    async fetchTutorDataRepository(tutorId: string): Promise<TutorProfileWithCourses> {
+      if (!mongoose.Types.ObjectId.isValid(tutorId)) {
+        throw new Error("Invalid tutorId")
+      }
+
+      const tutorProfile = await tutorProfileModel.findOne({ tutorId }).lean()
+      if (!tutorProfile) {
+        throw new Error("Tutor profile not found")
+      }
+
+      const courses = await courseModel.find({ tutorId }).lean()
+
+      const formattedTutorProfile = {
+        ...tutorProfile,
+        tutorId: tutorProfile.tutorId.toString(),
+      }
+
+      const formattedCourses = courses.map(course => ({
+        ...course,
+        tutorId: course.tutorId.toString(),
+        _id: course._id.toString(),
+      }))
+
+      return {
+        tutorProfile: formattedTutorProfile,
+        courses: formattedCourses,
+    }
+  }
 }
+
+
+
   

@@ -2,6 +2,7 @@ import { IPurchaseService } from "../interfaces/serviceInterface/IbuyCourseServi
 import { IPurchaseRepository } from "../interfaces/repositoryInterface/IbuyCourseRepository";
 import { purchaseInput } from "../types/purchase";
 import { TCourseAdd } from "../types/course";
+import { PurchaseHistoryItem } from "../types/transation";
 
 export class PurchaseService implements IPurchaseService{
     constructor(private _purchaseRepository:IPurchaseRepository){}
@@ -19,6 +20,10 @@ export class PurchaseService implements IPurchaseService{
 
     async getUserEnrolledCourses(userId: string): Promise<{ courses: TCourseAdd[]; total: number }> {
     return this._purchaseRepository.getEnrolledCourses(userId);
+  }
+
+   async getPurchaseHistory(userId: string): Promise<PurchaseHistoryItem[]> {
+    return this._purchaseRepository.getPurchaseHistory(userId);
   }
 
 }

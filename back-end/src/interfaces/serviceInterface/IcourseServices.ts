@@ -1,7 +1,7 @@
 // interfaces/serviceInterface/ICourseService.ts
 
 import { TCourseAdd } from "../../types/course";
-import { TCourseFilterOptions } from "../../types/user";
+import { TCourseFilterOptions, TStudent, TUserModel } from "../../types/user";
 
 export interface ICourseService {
   getCourseById(courseId: string, tutorId: string): Promise<any>;
@@ -10,4 +10,8 @@ export interface ICourseService {
   updateCourse(data: TCourseAdd, thumbnail: string, courseId: string): Promise<void>;
   deleteCourse(courseId: string): Promise<void>;
   getAllCourses(options: TCourseFilterOptions): Promise<{ courses: TCourseAdd[]; total: number }>;
+  getCourseDetails(courseId: string): Promise<TCourseAdd | null>;
+  getAllStudents(courseId: string): Promise< TUserModel[]| null> 
+
+
 }

@@ -1,12 +1,16 @@
 import { IPurchaseRepository } from "../interfaces/repositoryInterface/IbuyCourseRepository";
 import { purchaseModel } from "../models/buyCourseModal";
+import { courseModel } from "../models/course";
 import { TCourseAdd, TCourseResponse } from "../types/course";
 import { purchaseInput } from "../types/purchase";
 import {Types} from 'mongoose'
+import { PurchaseHistoryItem } from "../types/transation";
 
 export class PurchaseRepository implements IPurchaseRepository {
   async saveOrder(userId: string, data: purchaseInput): Promise<void> {
     let purchase = await purchaseModel.findOne({ userId });
+
+  
 
     if (purchase) {
       const purchaseExist = purchase.purchase.some(
@@ -38,6 +42,9 @@ export class PurchaseRepository implements IPurchaseRepository {
       });
       return;
     }
+
+
+    
   }
 
   async isEnrolled (userId:string,courseId:string):Promise<boolean>{
@@ -84,5 +91,35 @@ export class PurchaseRepository implements IPurchaseRepository {
     total: enrolledCourses.purchase.length,
   };
 }
+
+
+async getPurchaseHistory(userId: string): Promise<PurchaseHistoryItem[]> {
+    const result = await purchaseModel.aggregate([
+      { $match: { userId: new Types.ObjectId(userId) } },
+      { $unwind: "$purchase" },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "purchase.courseId",
+          foreignField: "_id",
+          as: "courseDetails"
+        }
+      },
+      { $unwind: "$courseDetails" },
+      {
+        $project: {
+          courseId: "$purchase.courseId",
+          courseName: "$courseDetails.title", 
+          amount: "$purchase.amount",
+          orderId: "$purchase.orderId",
+          status: "$purchase.status",
+          createdAt: "$purchase.createdAt"
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    return result;
+  }
 }
   

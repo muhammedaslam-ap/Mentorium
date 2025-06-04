@@ -21,6 +21,10 @@ import { WishlistRoutes } from "./routes/wishlistRoute";
 import { PaymentRoutes } from "./routes/paymentRoute";
 import { createServer } from "http";
 import { initializeSocket } from "./config/socketIO";
+import { WalletRoutes } from "./routes/walletRoute";
+import { ProgressRoutes } from "./routes/progressRoute";
+import { TransactionRoutes } from "./routes/transactionRoute";
+import { ReviewRoutes } from "./routes/reviewRoute";
 
 connectDB();
 
@@ -31,7 +35,7 @@ cloudinary.config({
 });
 
 const corsOptions = {
-  origin: ["http://localhost:5173"], // Match your frontend URL (Vite default)
+  origin: ["http://localhost:5173"], 
   credentials: true,
   methods: ["GET", "POST", "OPTIONS", "PATCH", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -60,6 +64,14 @@ try {
   app.use("/payment", new PaymentRoutes().router);
   app.use("/wishlist", new WishlistRoutes().router);
   app.use("/purchase", new PurchaseRoute().router);
+  app.use("/wallet", new WalletRoutes().router);
+  app.use("/progress", new ProgressRoutes().router);
+  app.use("/transaction", new TransactionRoutes().router);
+  app.use("/reviews", new ReviewRoutes().router);
+
+
+
+
 } catch (error) {
   console.error("Error initializing routes:", error);
   process.exit(1);

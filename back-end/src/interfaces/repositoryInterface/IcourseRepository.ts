@@ -1,5 +1,5 @@
 import { TCourseAdd, TCourseResponse } from "../../types/course";
-import { TCourseFilterOptions } from "../../types/user";
+import { TCourseFilterOptions, TStudent, TUserModel } from "../../types/user";
 
 
 export interface ICourseRepository {
@@ -26,4 +26,8 @@ export interface ICourseRepository {
     courseId: string,
     tutorId: string
   ): Promise<TCourseResponse | null>;
+  getCourseDetails(courseId: string): Promise<TCourseAdd | null>;
+  getAllStudents(courseId: string): Promise< TUserModel[]| null> 
+    
+
 }

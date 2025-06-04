@@ -215,7 +215,6 @@ export const courseService = {
     }
   },
 
-  // New methods for lesson management
   async getLessonsByCourse(courseId: string) {
     try {
       const response = await authAxiosInstance.get(`/tutor/courses/${courseId}/lessons`)
@@ -224,7 +223,6 @@ export const courseService = {
     } catch (error) {
       if (error instanceof AxiosError) {
         console.error("Failed to fetch lessons:", error)
-        // Don't show toast here as this might be called in the background
         return { data: { lessons: [] } }
       } else {
         console.error("Unexpected error:", error)
@@ -237,7 +235,7 @@ export const courseService = {
     try {
       const response = await authAxiosInstance.post(`/tutor/courses/${courseId}/lessons`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 60000, // 60 seconds for video upload
+        timeout: 60000,
       })
       console.log("addLesson Response:", response.data)
       toast.success("Lesson added successfully")
@@ -262,7 +260,7 @@ export const courseService = {
     try {
       const response = await authAxiosInstance.put(`/tutor/lessons/${lessonId}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 60000, // 60 seconds for video upload
+        timeout: 60000, 
       })
       console.log("updateLesson Response:", response.data)
       toast.success("Lesson updated successfully")

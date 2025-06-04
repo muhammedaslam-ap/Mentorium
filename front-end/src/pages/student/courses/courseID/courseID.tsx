@@ -1,46 +1,54 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import {
   BookOpen,
   User,
   Clock,
   Star,
   Calendar,
-  Award,
   FileText,
   Download,
   ArrowLeft,
   Loader,
   PlayCircle,
-  Share2,
-  HelpCircle,
   CheckSquare,
   MessageSquare,
   Heart,
   Lock,
-  CheckCircle
+  CheckCircle,
+  Award,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { courseService } from "@/services/courseServices/courseService";
 import { lessonService } from "@/services/lessonServices/lessonServices";
 import { wishlistService } from "@/services/wishlistServices/wishlistService";
-import { enrollmentService } from "@/services/purchaseServices/enrollmentService";
-import Header from "../../components/header";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
+import { useInView } from "react-intersection-observer";
+import Header from "../../components/header";
+import { useSelector } from "react-redux";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+
+// Utility to debounce a function
+const debounce = (func: (...args: any[]) => void, wait: number) => {
+  let timeout: NodeJS.Timeout | null = null;
+  return (...args: any[]) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      func(...args);
+    }, wait);
+  };
+};
 
 interface Tutor {
   _id?: string;
@@ -77,34 +85,709 @@ interface Lesson {
   file?: string;
 }
 
+interface Review {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+  };
+  courseId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+const CourseInfo = React.memo(
+  ({
+    course,
+    lessons,
+    isEnrolled,
+    loadingEnrollment,
+    inWishlist,
+    loadingWishlist,
+    getTotalDuration,
+    getDifficultyColor,
+    handleToggleWishlist,
+    handleEnrollNow,
+    completedLessons,
+    calculateProgress,
+    handleChatWithInstructor,
+    loadingChat,
+    handleStartCall,
+    loadingCall,
+  }: {
+    course: Course;
+    lessons: Lesson[];
+    isEnrolled: boolean;
+    loadingEnrollment: boolean;
+    inWishlist: boolean;
+    loadingWishlist: boolean;
+    getTotalDuration: () => string;
+    getDifficultyColor: (difficulty: string) => string;
+    handleToggleWishlist: () => void;
+    handleEnrollNow: () => void;
+    completedLessons: string[];
+    calculateProgress: () => number;
+    handleChatWithInstructor: () => void;
+    loadingChat: boolean;
+    handleStartCall: () => void;
+    loadingCall: boolean;
+  }) => {
+    const isCourseCompleted = useMemo(
+      () => lessons.length > 0 && lessons.every((lesson) => completedLessons.includes(lesson._id)),
+      [lessons, completedLessons]
+    );
+    const remainingLessons = useMemo(() => lessons.length - completedLessons.length, [lessons, completedLessons]);
+
+    return (
+      <div className="space-y-8">
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-3">
+            {course.difficulty && (
+              <Badge className={`${getDifficultyColor(course.difficulty)} px-3 py-1 text-sm font-medium`}>
+                {course.difficulty}
+              </Badge>
+            )}
+            {course.category && (
+              <Badge
+                variant="outline"
+                className="px-3 py-1 text-sm font-medium border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300"
+              >
+                {course.category}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">{course.title}</h1>
+            {course.tagline && (
+              <p className="text-xl text-gray-600 dark:text-gray-300">{course.tagline}</p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 text-gray-600 dark:text-gray-300">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium">{course.tutor?.name || course.tutorName}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              <span className="font-medium">{course.ratings?.toFixed(1) || 4.5}</span>
+              <span className="text-gray-500">({course.reviewCount || 0} reviews)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span>{getTotalDuration()}</span>
+            </div>
+            {course.createdAt && (
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <span>Updated {new Date(course.createdAt).toLocaleDateString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {loadingEnrollment ? (
+          <Card className="border-gray-200 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                <Loader className="h-5 w-5 animate-spin" />
+                <span>Checking enrollment...</span>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card
+            className={`border-2 ${isEnrolled ? "border-green-600 bg-green-50 dark:border-green-600 dark:bg-green-900/20" : "border-amber-600 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/20"}`}
+          >
+            <CardContent className="p-6">
+              {isEnrolled ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-green-700 dark:text-green-300">
+                    <CheckCircle className="h-6 w-6" />
+                    <span className="font-semibold text-lg">You're enrolled!</span>
+                  </div>
+                  {isCourseCompleted ? (
+                    <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
+                      <Award className="h-5 w-5" />
+                      <span className="font-medium">Course completed!</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Progress: {completedLessons.length} of {lessons.length} lessons
+                        </span>
+                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                          {calculateProgress()}%
+                        </span>
+                      </div>
+                      <Progress value={calculateProgress()} className="h-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {remainingLessons} lesson{remainingLessons !== 1 ? "s" : ""} remaining
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 text-amber-600 dark:text-amber-300">
+                  <Lock className="h-6 w-6" />
+                  <span className="font-semibold text-lg">Enroll to access all course content</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex flex-wrap gap-4">
+          <Button
+            variant="outline"
+            size="lg"
+            className={`${
+              inWishlist ? "border-rose-600 text-red-600 hover:bg-red-50 dark:border-red-600 dark:text-red-400 dark:hover:bg-red-900/20" : "border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            }`}
+            onClick={handleToggleWishlist}
+            disabled={loadingWishlist}
+          >
+            {loadingWishlist ? (
+              <Loader className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+              <Heart className={`mr-2 h-5 w-5 ${inWishlist ? "fill-current" : ""}`} />
+            )}
+            {inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+          </Button>
+
+          {isEnrolled && (
+            <>
+              <Button
+                size="lg"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={handleChatWithInstructor}
+                disabled={loadingChat}
+              >
+                {loadingChat ? (
+                  <Loader className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                )}
+                Chat with Instructor
+              </Button>
+              <Button
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleStartCall}
+                disabled={loadingCall}
+              >
+                {loadingCall ? (
+                  <Loader className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <Video className="mr-2 h-5 w-5" />
+                )}
+                Call Tutor
+              </Button>
+            </>
+          )}
+        </div>
+
+        <div className="lg:hidden">
+          <Card className="overflow-hidden border-gray-200 dark:border-gray-700">
+            <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
+              {course.thumbnail ? (
+                <img
+                  src={course.thumbnail}
+                  alt={course.title}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/placeholder.svg?height=192&width=384&text=Course";
+                  }}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <BookOpen className="h-16 w-16 text-blue-600 dark:text-blue-400" />
+                </div>
+              )}
+            </div>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">₹{course.price.toFixed(2)}</div>
+              </div>
+
+              {!isEnrolled ? (
+                <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={handleEnrollNow}>
+                  Enroll Now
+                </Button>
+              ) : isCourseCompleted ? (
+                <Button
+                  size="lg"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  disabled
+                >
+                  <Award className="mr-2 h-5 w-5" />
+                  Course completed
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleEnrollNow}
+                >
+                  Continue Learning
+                </Button>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span>Lifetime access</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span>{getTotalDuration()}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span>{lessons.length} lessons</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Download className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span>Resources</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+);
+
+const LessonItem = React.memo(
+  ({
+    lesson,
+    index,
+    isEnrolled,
+    showVideoModal,
+    handleEnrollNow,
+    formatDuration,
+    isCompleted,
+  }: {
+    lesson: Lesson;
+    index: number;
+    isEnrolled: boolean;
+    showVideoModal: (url: string, lessonId: string) => void;
+    handleEnrollNow: () => void;
+    formatDuration: (seconds: number) => string;
+    isCompleted: boolean;
+  }) => (
+    <Card
+      className={`transition-all duration-200 hover:shadow-md ${isCompleted ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800" : "border-gray-200 dark:border-gray-700"}`}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-center gap-4">
+          <div
+            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+              isCompleted
+                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                : "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+            }`}
+          >
+            {isCompleted ? <CheckCircle className="h-5 w-5" /> : lesson.order || index + 1}
+          </div>
+
+          <div className="flex-grow space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-lg">{lesson.title}</h4>
+            {lesson.description && (
+              <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                {lesson.description.length > 120 ? `${lesson.description.substring(0, 120)}...` : lesson.description}
+              </p>
+            )}
+            <div className="flex items-center gap-4">
+              {lesson.duration > 0 && (
+                <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                  <Clock className="h-4 w-4" />
+                  {formatDuration(lesson.duration)}
+                </div>
+              )}
+              {isEnrolled && isCompleted && (
+                <div className="flex items-center gap-1 text-green-600 dark:text-green-400 text-sm font-medium">
+                  <CheckCircle className="h-4 w-4" />
+                  Completed
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-shrink-0">
+            {lesson.file ? (
+              isEnrolled || index === 0 ? (
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => showVideoModal(lesson.file!, lesson._id)}
+                >
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Watch
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                  onClick={handleEnrollNow}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Premium
+                </Button>
+              )
+            ) : (
+              <span className="text-gray-400 dark:text-gray-500 text-sm">No video</span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+);
+
+const SidebarCard = ({
+  course,
+  isEnrolled,
+  loadingEnrollment,
+  inWishlist,
+  loadingWishlist,
+  lessons,
+  getTotalDuration,
+  handleEnrollNow,
+  handleToggleWishlist,
+  navigate,
+  courseId,
+  completedLessons,
+  handleChatWithInstructor,
+  loadingChat,
+  handleStartCall,
+  loadingCall,
+}: {
+  course: Course;
+  isEnrolled: boolean;
+  loadingEnrollment: boolean;
+  inWishlist: boolean;
+  loadingWishlist: boolean;
+  lessons: Lesson[];
+  getTotalDuration: () => string;
+  handleEnrollNow: () => void;
+  handleToggleWishlist: () => void;
+  navigate: (path: string) => void;
+  courseId: string;
+  completedLessons: string[];
+  handleChatWithInstructor: () => void;
+  loadingChat: boolean;
+  handleStartCall: () => void;
+  loadingCall: boolean;
+}) => {
+  const isCourseCompleted = lessons.length > 0 && lessons.every((lesson) => completedLessons.includes(lesson._id));
+
+  return (
+    <Card className="overflow-hidden border-gray-200 dark:border-gray-700 shadow-lg">
+      <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700">
+        {course.thumbnail ? (
+          <img
+            src={course.thumbnail}
+            alt={course.title}
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "/placeholder.svg?height=192&width=384&text=Course";
+            }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <BookOpen className="h-16 w-16 text-blue-600 dark:text-blue-400" />
+          </div>
+        )}
+      </div>
+
+      <CardContent className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white">₹{course.price.toFixed(2)}</div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`${
+              inWishlist
+                ? "text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
+            }`}
+            onClick={handleToggleWishlist}
+            disabled={loadingWishlist}
+          >
+            {loadingWishlist ? (
+              <Loader className="h-5 w-5 animate-spin" />
+            ) : (
+              <Heart className={`h-5 w-5 ${inWishlist ? "fill-current" : ""}`} />
+            )}
+          </Button>
+        </div>
+
+        {loadingEnrollment ? (
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            <Loader className="h-5 w-5 animate-spin" />
+            <span>Checking enrollment...</span>
+          </div>
+        ) : isEnrolled ? (
+          <div className="space-y-3">
+            {isCourseCompleted ? (
+              <Button
+                size="lg"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                disabled
+              >
+                <Award className="mr-2 h-5 w-5" />
+                Course completed
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => navigate(`/student/courses/${courseId}`)}
+              >
+                Continue Learning
+              </Button>
+            )}
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
+              onClick={handleChatWithInstructor}
+              disabled={loadingChat}
+            >
+              {loadingChat ? (
+                <Loader className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <MessageSquare className="mr-2 h-5 w-5" />
+              )}
+              Chat with Instructor
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              onClick={handleStartCall}
+              disabled={loadingCall}
+            >
+              {loadingCall ? (
+                <Loader className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Video className="mr-2 h-5 w-5" />
+              )}
+              Call Tutor
+            </Button>
+          </div>
+        ) : (
+          <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={handleEnrollNow}>
+            Enroll Now
+          </Button>
+        )}
+
+        <Separator />
+
+        <div className="space-y-4">
+          <h4 className="font-semibold text-gray-900 dark:text-white">What's included:</h4>
+          <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+            <div className="flex items-center gap-3">
+              <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>Full lifetime access</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>{getTotalDuration()}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>{lessons.length} lessons</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Download className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>Downloadable resources</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>Community support</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>Certificate of completion</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const ReviewItem = ({
+  reviewerName,
+  timeAgo,
+  rating,
+  comment,
+  avatarFallback,
+  avatarBgClass,
+  avatarTextClass,
+}: {
+  reviewerName: string;
+  timeAgo: string;
+  rating: number;
+  comment: string;
+  avatarFallback: string;
+  avatarBgClass: string;
+  avatarTextClass: string;
+}) => (
+  <div className="flex gap-4 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+    <Avatar className="h-12 w-12 flex-shrink-0">
+      <AvatarFallback className={`${avatarBgClass} ${avatarTextClass} font-semibold`}>{avatarFallback}</AvatarFallback>
+    </Avatar>
+    <div className="flex-1 space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="font-semibold text-gray-900 dark:text-white">{reviewerName}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{timeAgo}</div>
+        </div>
+        <div className="flex items-center gap-1">
+          {[...Array(5)].map((_, i) => (
+            <Star
+              key={i}
+              className={`h-4 w-4 ${
+                i < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300 dark:text-gray-600"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{comment}</p>
+    </div>
+  </div>
+);
+
 const CourseDetails = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [visibleLessons, setVisibleLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string>("");
+  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
   const [inWishlist, setInWishlist] = useState(false);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [loadingEnrollment, setLoadingEnrollment] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+  const [loadingChat, setLoadingChat] = useState(false);
+  const [loadingCall, setLoadingCall] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [newReview, setNewReview] = useState({ rating: 0, comment: "" });
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const currentLessonIdRef = useRef<string | null>(null);
+  const { ref: loadMoreRef, inView } = useInView();
+  const lessonsPerPage = 10;
+  const currentUser = useSelector((state: any) => state.user.userDatas);
+  const studentId = currentUser?._id || currentUser?.id;
 
-  useEffect(() => {
+  const courseDetails = useMemo(
+    () => ({
+      _id: course?._id,
+      title: course?.title,
+      tutorId: course?.tutorId,
+    }),
+    [course]
+  );
+
+  const handleChatWithInstructor = useCallback(async () => {
     if (!courseId) {
       toast.error("Invalid course ID");
-      navigate("/student/courses");
       return;
     }
-    
-    fetchCourseDetails();
-    fetchLessons();
-    checkWishlistStatus();
-    checkEnrollmentStatus();
+    setLoadingChat(true);
+    try {
+      const response = await courseService.getCourseDetailsInStudentSide(courseId);
+      const courseData = response.course || response;
+      if (!courseData || !courseData._id) {
+        throw new Error("Course not found");
+      }
+      const tutorId = courseData.tutor?._id || courseData.tutorId;
+      if (!tutorId) {
+        throw new Error("Tutor information not available");
+      }
+      navigate(`/student/${courseId}/chat`, {
+        state: {
+          courseId,
+          tutorId,
+          courseTitle: courseData.title,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error fetching course details for chat:", error);
+      toast.error(error.message || "Failed to start chat");
+    } finally {
+      setLoadingChat(false);
+    }
   }, [courseId, navigate]);
 
-  const fetchCourseDetails = async () => {
+  const handleStartCallInternal = async () => {
+    if (!isEnrolled) {
+      toast.info("Please enroll in the course to call the tutor");
+      navigate(`/student/checkout/${courseId}`);
+      return;
+    }
+    if (!courseId || !studentId || !courseDetails.tutorId) {
+      toast.error("Course or user data not loaded");
+      console.error("handleStartCall: Missing data", {
+        courseId,
+        studentId,
+        tutorId: courseDetails.tutorId,
+      });
+      return;
+    }
+
+    setLoadingCall(true);
+    try {
+      const roomId = `videocall_${courseDetails._id}_${studentId}_${courseDetails.tutorId}`;
+      navigate(`/video-call/${roomId}`, {
+        state: {
+          isInitiator: true,
+          courseTitle: courseDetails.title,
+          userId: studentId,
+          tutorId: courseDetails.tutorId,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error starting call:", error);
+      toast.error("Failed to initiate call");
+    } finally {
+      setLoadingCall(false);
+    }
+  };
+
+  const handleStartCall = useCallback(debounce(handleStartCallInternal, 1000), [
+    isEnrolled,
+    courseId,
+    navigate,
+    studentId,
+    courseDetails,
+  ]);
+
+  useEffect(() => {
+    setVisibleLessons(lessons.slice(0, lessonsPerPage));
+  }, [lessons]);
+
+  useEffect(() => {
+    if (inView && visibleLessons.length < lessons.length) {
+      setVisibleLessons((prev) => lessons.slice(0, prev.length + lessonsPerPage));
+    }
+  }, [inView, lessons]);
+
+  const fetchCourseDetails = useCallback(async () => {
     setLoading(true);
     try {
       const response = await courseService.getCourseDetailsInStudentSide(courseId!);
@@ -127,9 +810,9 @@ const CourseDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, navigate]);
 
-  const fetchLessons = async () => {
+  const fetchLessons = useCallback(async () => {
     setLoadingLessons(true);
     try {
       const response = await lessonService.getLessonsByCourse(courseId!);
@@ -142,9 +825,36 @@ const CourseDetails = () => {
     } finally {
       setLoadingLessons(false);
     }
-  };
+  }, [courseId]);
 
-  const checkWishlistStatus = async () => {
+  const fetchCompletedLessons = useCallback(async () => {
+    if (!isEnrolled) return;
+    try {
+      const response = await authAxiosInstance.get(`/progress/${courseId}/completed-lessons`);
+      setCompletedLessons(response.data.lessons || []);
+    } catch (error: any) {
+      console.error("Error fetching completed lessons:", error);
+      toast.error("Failed to load completed lessons");
+    }
+  }, [courseId, isEnrolled]);
+
+  const markLessonCompleted = useCallback(
+    async (lessonId: string) => {
+      if (completedLessons.includes(lessonId)) return;
+      try {
+        setCompletedLessons((prev) => [...prev, lessonId]);
+        await authAxiosInstance.post(`/progress/${lessonId}/complete`, { courseId });
+        toast.success("Lesson marked as completed");
+      } catch (error: any) {
+        console.error("Error marking lesson as completed:", error);
+        toast.error("Failed to mark lesson as completed");
+        setCompletedLessons((prev) => prev.filter((id) => id !== lessonId));
+      }
+    },
+    [courseId, completedLessons]
+  );
+
+  const checkWishlistStatus = useCallback(async () => {
     setLoadingWishlist(true);
     try {
       const isInWishlist = await wishlistService.isInWishlist(courseId!);
@@ -154,22 +864,22 @@ const CourseDetails = () => {
     } finally {
       setLoadingWishlist(false);
     }
-  };
+  }, [courseId]);
 
-  const checkEnrollmentStatus = async () => {
+  const checkEnrollmentStatus = useCallback(async () => {
     setLoadingEnrollment(true);
     try {
-      const enrolled = await authAxiosInstance.get(`/purchase/enrollments/${courseId}`);
-      console.log("hhhhhhhhyhhhhhh------------------------>",enrolled.data.data.isEnrolled)
-      setIsEnrolled(enrolled.data.data.isEnrolled);
+      const response = await authAxiosInstance.get(`/purchase/enrollments/${courseId}`);
+      setIsEnrolled(response.data.data.isEnrolled);
     } catch (error: any) {
       console.error("Failed to check enrollment status:", error);
+      toast.error("Failed to verify enrollment");
     } finally {
       setLoadingEnrollment(false);
     }
-  };
+  }, [courseId]);
 
-  const handleToggleWishlist = async () => {
+  const handleToggleWishlist = useCallback(async () => {
     setLoadingWishlist(true);
     try {
       if (inWishlist) {
@@ -187,35 +897,37 @@ const CourseDetails = () => {
     } finally {
       setLoadingWishlist(false);
     }
-  };
+  }, [inWishlist, courseId]);
 
-  const showVideoModal = (url: string) => {
+  const showVideoModal = useCallback((url: string, lessonId: string) => {
     setVideoUrl(url);
+    setCurrentLessonId(lessonId);
+    currentLessonIdRef.current = lessonId;
     setIsVideoModalVisible(true);
-  };
+  }, []);
 
-  const handleEnrollNow = () => {
+  const handleEnrollNow = useCallback(() => {
+    if (!courseId) {
+      toast.error("Invalid course ID");
+      return;
+    }
     navigate(`/student/checkout/${courseId}`);
-  };
+  }, [navigate, courseId]);
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = useCallback((seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes % 60}m`;
-    }
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
     return `${minutes}m`;
-  };
+  }, []);
 
-  const getTotalDuration = () => {
+  const getTotalDuration = useCallback(() => {
     if (!lessons.length) return "0m";
-    const totalSeconds = lessons.reduce((total, lesson) => {
-      return total + (lesson.duration || 0);
-    }, 0);
+    const totalSeconds = lessons.reduce((total, lesson) => total + (lesson.duration || 0), 0);
     return formatDuration(totalSeconds);
-  };
+  }, [lessons, formatDuration]);
 
-  const getDifficultyColor = (difficulty: string) => {
+  const getDifficultyColor = useCallback((difficulty: string) => {
     switch (difficulty?.toLowerCase()) {
       case "beginner":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100";
@@ -226,33 +938,189 @@ const CourseDetails = () => {
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100";
     }
-  };
+  }, []);
+
+  const calculateProgress = useCallback(() => {
+    if (lessons.length === 0) return 0;
+    return Math.round((completedLessons.length / lessons.length) * 100);
+  }, [lessons, completedLessons]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (!currentLessonIdRef.current || !isEnrolled) return;
+    if (completedLessons.includes(currentLessonIdRef.current)) return;
+    markLessonCompleted(currentLessonIdRef.current);
+  }, [isEnrolled, completedLessons, markLessonCompleted]);
+
+  const fetchReviews = useCallback(async () => {
+    if (!courseId) return;
+    setLoadingReviews(true);
+    try {
+      const response = await authAxiosInstance.get(`/reviews/${courseId}`);
+      setReviews(response.data.reviews || []);
+    } catch (error: any) {
+      console.error("Error fetching reviews:", error);
+      toast.error("Failed to load reviews");
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, [courseId]);
+
+  const handleSubmitReview = useCallback(async () => {
+    if (!courseId) {
+      toast.error("Invalid course ID");
+      return;
+    }
+    if (!studentId) {
+      toast.error("Please log in to submit a review");
+      return;
+    }
+    if (newReview.rating < 1 || newReview.rating > 5) {
+      toast.error("Please select a rating between 1 and 5");
+      return;
+    }
+    if (!newReview.comment.trim()) {
+      toast.error("Please provide a comment");
+      return;
+    }
+
+    // Check for existing review by the same user for this course
+    const userReview = reviews.find((review) => review.user._id === studentId && review.courseId === courseId);
+    if (userReview) {
+      toast.error("You have already submitted a review for this course");
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      await authAxiosInstance.post(`/reviews/${courseId}/add`, {
+        courseId, 
+        userId: studentId,
+        rating: newReview.rating,
+        comment: newReview.comment,
+      });
+      toast.success("Review submitted successfully");
+      setNewReview({ rating: 0, comment: "" });
+      fetchReviews();
+      fetchCourseDetails();
+    } catch (error: any) {
+      console.error("Error submitting review:", error);
+      toast.error(error.message || "Failed to submit review");
+    } finally {
+      setSubmittingReview(false);
+    }
+  }, [courseId, studentId, newReview, reviews, fetchReviews, fetchCourseDetails]);
+
+  const memoizedCourse = useMemo(() => course, [course]);
+  const memoizedLessons = useMemo(() => lessons, [lessons]);
+
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return memoizedCourse?.ratings || 4.8;
+    const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+    return Number((total / reviews.length).toFixed(1));
+  }, [reviews, memoizedCourse]);
+
+  const ratingDistribution = useMemo(() => {
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    if (reviews.length === 0) return distribution;
+    reviews.forEach((review) => {
+      distribution[review.rating] = (distribution[review.rating] || 0) + 1;
+    });
+    return distribution;
+  }, [reviews]);
+
+  const formattedReviews = useMemo(() => {
+    return reviews.map((review, index) => {
+      const colors = [
+        {
+          avatarBgClass: "bg-blue-100 dark:bg-blue-900",
+          avatarTextClass: "text-blue-600 dark:text-blue-400",
+        },
+        {
+          avatarBgClass: "bg-green-100 dark:bg-green-900",
+          avatarTextClass: "text-green-600 dark:text-green-400",
+        },
+        {
+          avatarBgClass: "bg-purple-100 dark:bg-purple-900",
+          avatarTextClass: "text-purple-600 dark:text-purple-400",
+        },
+      ];
+      const color = colors[index % colors.length];
+      const timeAgo = new Date(review.createdAt).toLocaleDateString();
+      return {
+        reviewerName: review.user.name,
+        timeAgo,
+        rating: review.rating,
+        comment: review.comment,
+        avatarFallback: review.user.name.charAt(0).toUpperCase(),
+        avatarBgClass: color.avatarBgClass,
+        avatarTextClass: color.avatarTextClass,
+      };
+    });
+  }, [reviews]);
+
+  useEffect(() => {
+    if (!courseId) {
+      toast.error("Invalid course ID");
+      navigate("/student/courses");
+      return;
+    }
+    fetchCourseDetails();
+    fetchLessons();
+    checkWishlistStatus();
+    checkEnrollmentStatus();
+    fetchCompletedLessons();
+    fetchReviews();
+    return () => {
+      setLoadingCall(false);
+    };
+  }, [
+    courseId,
+    navigate,
+    fetchCourseDetails,
+    fetchLessons,
+    checkWishlistStatus,
+    checkEnrollmentStatus,
+    fetchCompletedLessons,
+    fetchReviews,
+  ]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-white dark:bg-gray-900">
         <Header />
-        <div className="container mx-auto max-w-6xl px-4 py-8">
-          <div className="flex items-center justify-center h-[60vh]">
-            <Loader className="h-12 w-12 animate-spin text-blue-600 dark:text-blue-400" />
+        <div className="container mx-auto max-w-7xl px-4 py-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="space-y-4">
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse"></div>
+                <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+            </div>
+            <div className="hidden lg:block">
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!course) {
+  if (!memoizedCourse) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-white dark:bg-gray-900">
         <Header />
-        <div className="container mx-auto max-w-6xl px-4 py-12">
-          <div className="flex flex-col items-center justify-center text-center">
-            <BookOpen className="mb-4 h-20 w-20 text-gray-300 dark:text-gray-600" />
-            <h2 className="mb-2 text-2xl font-bold text-gray-800 dark:text-gray-100">Course Not Found</h2>
-            <p className="mb-6 text-gray-600 dark:text-gray-300">
-              The course you're looking for doesn't exist or has been removed.
-            </p>
+        <div className="container mx-auto max-w-7xl px-4 py-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-6">
+            <BookOpen className="h-24 w-24 text-gray-300 dark:text-gray-600" />
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Course Not Found</h2>
+              <p className="text-gray-600 dark:text-gray-300 max-w-md">
+                The course you're looking for doesn't exist or has been removed.
+              </p>
+            </div>
             <Button
+              size="lg"
               className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => navigate("/student/courses")}
             >
@@ -265,657 +1133,425 @@ const CourseDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       <Header />
-      <div className="container mx-auto max-w-6xl px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
         <Button
           variant="ghost"
-          className="mb-6 flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-            onClick={() => navigate(-1)}
+          className="mb-8 flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
+          onClick={() => navigate(-1)}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="mr-2 h-5 w-5" />
           Back to Courses
         </Button>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <div className="mb-6">
-              <div className="flex flex-wrap gap-2 mb-3">
-                {course.difficulty && (
-                  <Badge className={`${getDifficultyColor(course.difficulty)}`}>
-                    {course.difficulty}
-                  </Badge>
-                )}
-                {course.category && (
-                  <Badge variant="outline" className="border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                    {course.category}
-                  </Badge>
-                )}
-              </div>
-              
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">{course.title}</h1>
-              {course.tagline && (
-                <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{course.tagline}</p>
-              )}
-              
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-                <div className="flex items-center">
-                  <User className="mr-1.5 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span>{course.tutor?.name || course.tutorName}</span>
-                </div>
-                <div className="flex items-center">
-                  <Star className="mr-1.5 h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span>{course.ratings} ({course.reviewCount} reviews)</span>
-                </div>
-                <div className="flex items-center">
-                  <Clock className="mr-1.5 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span>{getTotalDuration()} total length</span>
-                </div>
-                {course.createdAt && (
-                  <div className="flex items-center">
-                    <Calendar className="mr-1.5 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span>Last updated: {new Date(course.createdAt).toLocaleDateString()}</span>
-                  </div>
-                )}
-              </div>
+          <div className="lg:col-span-2 space-y-8">
+            <CourseInfo
+              course={memoizedCourse}
+              lessons={memoizedLessons}
+              isEnrolled={isEnrolled}
+              loadingEnrollment={loadingEnrollment}
+              inWishlist={inWishlist}
+              loadingWishlist={loadingWishlist}
+              getTotalDuration={getTotalDuration}
+              getDifficultyColor={getDifficultyColor}
+              handleToggleWishlist={handleToggleWishlist}
+              handleEnrollNow={handleEnrollNow}
+              completedLessons={completedLessons}
+              calculateProgress={calculateProgress}
+              handleChatWithInstructor={handleChatWithInstructor}
+              loadingChat={loadingChat}
+              handleStartCall={handleStartCall}
+              loadingCall={loadingCall}
+            />
 
-              {/* Enrollment Status Indicator */}
-              <div className="mt-4 rounded-md border p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                {loadingEnrollment ? (
-                  <div className="flex items-center text-gray-600 dark:text-gray-300">
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    <span>Checking enrollment status...</span>
-                  </div>
-                ) : isEnrolled ? (
-                  <div className="flex items-center text-green-600 dark:text-green-400">
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    <span className="font-medium">You are enrolled in this course! Access all lessons below.</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center text-amber-600 dark:text-amber-400">
-                    <Lock className="mr-2 h-5 w-5" />
-                    <span className="font-medium">Enroll now to access all lessons and course materials.</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Course thumbnail for mobile */}
-            <div className="mb-8 lg:hidden">
-              <Card className="overflow-hidden">
-                <div className="aspect-video bg-gray-100 dark:bg-gray-700">
-                  {course.thumbnail ? (
-                    <img
-                      src={course.thumbnail || "/placeholder.svg"}
-                      alt={course.title}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.svg?height=192&width=384&text=Course";
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <BookOpen className="h-16 w-16 text-blue-600 dark:text-blue-400" />
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-2xl font-bold text-gray-800 dark:text-white">₹{course.price.toFixed(2)}</div>
-                    <Button
-                      variant="outline"
-                      className={`${
-                        inWishlist
-                          ? "text-rose-600 hover:text-rose-700"
-                          : "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                      }`}
-                      onClick={handleToggleWishlist}
-                      disabled={loadingWishlist}
-                    >
-                      {loadingWishlist ? (
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Heart className={`mr-2 h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
-                      )}
-                      {inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
-                    </Button>
-                  </div>
-                  
-                  {!isEnrolled && (
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={handleEnrollNow}
-                    >
-                      Enroll Now
-                    </Button>
-                  )}
-                  
-                  <div className="mt-4 space-y-3 text-sm">
-                    <div className="flex items-center text-gray-600 dark:text-gray-300">
-                      <Award className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span>Full lifetime access</span>
-                    </div>
-                    <div className="flex items-center text-gray-600 dark:text-gray-300">
-                      <Clock className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span>{getTotalDuration()} of content</span>
-                    </div>
-                    <div className="flex items-center text-gray-600 dark:text-gray-300">
-                      <FileText className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span>{lessons.length} lessons</span>
-                    </div>
-                    <div className="flex items-center text-gray-600 dark:text-gray-300">
-                      <Download className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span>Downloadable resources</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Tabs for course content */}
-            <Tabs defaultValue="about" className="mb-8">
-              <TabsList className="bg-gray-100 dark:bg-gray-800 w-full h-auto flex flex-wrap">
-                <TabsTrigger 
-                  value="about" 
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            <Tabs defaultValue="about" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                <TabsTrigger
+                  value="about"
+                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-blue-400"
                 >
                   About
                 </TabsTrigger>
                 <TabsTrigger
                   value="curriculum"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-blue-400"
                 >
                   Curriculum
                 </TabsTrigger>
                 <TabsTrigger
                   value="instructor"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-blue-400"
                 >
                   Instructor
                 </TabsTrigger>
                 <TabsTrigger
                   value="reviews"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-blue-400"
                 >
                   Reviews
                 </TabsTrigger>
               </TabsList>
-              
-              {/* About Tab */}
-              <TabsContent value="about" className="mt-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">About This Course</h3>
-                    <div className="prose max-w-none">
-                      <p className="text-gray-600 dark:text-gray-300 whitespace-pre-line">{course.about}</p>
+
+              <TabsContent value="about" className="space-y-6">
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-8 space-y-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">About This Course</h3>
+                      <div className="prose max-w-none">
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg whitespace-pre-line">
+                          {memoizedCourse.about}
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <h4 className="font-medium text-gray-800 dark:text-white mb-4">What you'll learn</h4>
-                        <ul className="space-y-3">
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Master the fundamentals and advanced concepts</span>
-                          </li>
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Build real-world projects for your portfolio</span>
-                          </li>
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Gain practical skills that employers value</span>
-                          </li>
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Learn industry best practices and standards</span>
-                          </li>
-                        </ul>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <h4 className="font-medium text-gray-800 dark:text-white mb-4">Requirements</h4>
-                        <ul className="space-y-3">
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Basic understanding of the subject</span>
-                          </li>
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Computer with internet connection</span>
-                          </li>
-                          <li className="flex items-start">
-                            <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-600 dark:text-gray-300">Dedication and willingness to learn</span>
-                          </li>
-                        </ul>
-                      </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                        <CardContent className="p-6">
+                          <h4 className="font-bold text-gray-900 dark:text-white mb-4 text-lg">What you'll learn</h4>
+                          <ul className="space-y-3">
+                            <li className="flex items-start gap-3">
+                              <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                              <span className="text-gray-700 dark:text-gray-300">Master fundamentals</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                              <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                              <span className="text-gray-700 dark:text-gray-300">Build projects</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                              <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                              <span className="text-gray-700 dark:text-gray-300">Gain practical skills</span>
+                            </li>
+                          </ul>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+                        <CardContent className="p-6">
+                          <h4 className="font-bold text-gray-900 dark:text-white mb-4 text-lg">Requirements</h4>
+                          <ul className="space-y-3">
+                            <li className="flex items-start gap-3">
+                              <CheckSquare className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                              <span className="text-gray-700 dark:text-gray-300">Basic knowledge</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                              <CheckSquare className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                              <span className="text-gray-700 dark:text-gray-300">Computer with internet</span>
+                            </li>
+                          </ul>
+                        </CardContent>
+                      </Card>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
-              
-              {/* Curriculum Tab */}
-              <TabsContent value="curriculum" className="mt-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Course Curriculum</h3>
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        <span className="font-medium">{lessons.length} lessons</span>
-                        <span className="mx-2">•</span>
-                        <span>{getTotalDuration()} total length</span>
+
+              <TabsContent value="curriculum" className="space-y-6">
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-8 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Course Curriculum</h3>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-full">
+                        <span className="font-semibold">{memoizedLessons.length}</span> lessons •{" "}
+                        <span className="font-semibold">{getTotalDuration()}</span>
                       </div>
                     </div>
+
                     {loadingLessons ? (
-                      <div className="flex justify-center py-8">
-                        <Loader className="h-8 w-8 text-blue-600 dark:text-blue-400 animate-spin" />
+                      <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        ))}
                       </div>
-                    ) : lessons.length === 0 ? (
-                      <div className="text-center py-8">
-                        <BookOpen className="h-12 w-12 text-blue-600 dark:text-blue-400 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-300">No lessons available for this course yet.</p>
+                    ) : memoizedLessons.length === 0 ? (
+                      <div className="text-center py-12">
+                        <BookOpen className="h-16 w-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+                        <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No lessons available</h4>
+                        <p className="text-gray-600 dark:text-gray-300">Lessons for this course are coming soon.</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {lessons.map((lesson, index) => (
-                          <div
+                      <div className="space-y-2">
+                        {visibleLessons.map((lesson, index) => (
+                          <LessonItem
                             key={lesson._id}
-                            className="flex items-center p-4 border rounded-lg transition-colors border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                          >
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 mr-4">
-                              <span className="font-medium">{lesson.order || index + 1}</span>
-                            </div>
-                            <div className="flex-grow">
-                              <h4 className="font-medium text-gray-800 dark:text-white">{lesson.title}</h4>
-                              {lesson.description && (
-                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                  {lesson.description.length > 100 
-                                    ? `${lesson.description.substring(0, 100)}...` 
-                                    : lesson.description}
-                                </p>
-                              )}
-                              {lesson.duration > 0 && (
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                  <Clock className="inline h-3 w-3 mr-1" />
-                                  {formatDuration(lesson.duration)}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-shrink-0 ml-4">
-                              {lesson.file ? (
-                                // Allow access to first video if not enrolled, otherwise check enrollment
-                                (isEnrolled || index === 0) ? (
-                                  <Button
-                                    size="sm"
-                                    className="bg-blue-600 text-white hover:bg-blue-700"
-                                    onClick={() => showVideoModal(lesson.file!)}
-                                  >
-                                    <PlayCircle className="h-4 w-4 mr-2" />
-                                    Watch
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-400"
-                                    onClick={handleEnrollNow}
-                                  >
-                                    <Lock className="h-4 w-4 mr-2" />
-                                    Premium
-                                  </Button>
-                                )
-                              ) : (
-                                <span className="text-gray-500 dark:text-gray-400 text-sm">No video</span>
-                              )}
-                            </div>
-                          </div>
+                            lesson={lesson}
+                            index={index}
+                            isEnrolled={isEnrolled}
+                            showVideoModal={showVideoModal}
+                            handleEnrollNow={handleEnrollNow}
+                            formatDuration={formatDuration}
+                            isCompleted={completedLessons.includes(lesson._id)}
+                          />
                         ))}
+                        {visibleLessons.length < memoizedLessons.length && <div ref={loadMoreRef} className="h-10" />}
                       </div>
                     )}
                   </CardContent>
                 </Card>
               </TabsContent>
-              
-              {/* Instructor Tab */}
-              <TabsContent value="instructor" className="mt-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">About the Instructor</h3>
-                    {course?.tutor ? (
-                      <div className="flex flex-col md:flex-row gap-6">
+
+              <TabsContent value="instructor" className="space-y-6">
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-8 space-y-8">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">About the Instructor</h3>
+                    {memoizedCourse.tutor ? (
+                      <div className="flex flex-col md:flex-row gap-8">
                         <div className="flex-shrink-0 text-center md:text-left">
-                          <Avatar className="h-24 w-24 mx-auto md:mx-0">
-                            <AvatarImage src="/placeholder.svg?height=96&width=96" alt={course.tutor.name} />
-                            <AvatarFallback className="text-2xl bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">
-                              {course.tutor.name.charAt(0).toUpperCase()}
+                          <Avatar className="h-32 w-32 mx-auto md:mx-0 mb-4">
+                            <AvatarImage src="/placeholder.svg?height=128&width=128" alt={memoizedCourse.tutor.name} />
+                            <AvatarFallback className="text-3xl bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">
+                              {memoizedCourse.tutor.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <h4 className="font-semibold text-gray-800 dark:text-white mt-3">{course.tutor.name}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {course.tutor.specialization || "Expert Educator"}
+                          <h4 className="text-xl font-bold text-gray-900 dark:text-white">{memoizedCourse.tutor.name}</h4>
+                          <p className="text-gray-600 dark:text-gray-300 font-medium">
+                            {memoizedCourse.tutor.specialization || "Expert Educator"}
                           </p>
                         </div>
-                        
-                        <div className="flex-grow space-y-4">
-                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <h5 className="font-medium text-gray-800 dark:text-white mb-2">Biography</h5>
-                            <p className="text-gray-600 dark:text-gray-300">
-                              {course.tutor.bio || "No biography available for this instructor."}
-                            </p>
-                          </div>
-                          
-                          {course.tutor.phone && (
-                            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                              <h5 className="font-medium text-gray-800 dark:text-white mb-2">Contact Information</h5>
-                              <p className="text-gray-600 dark:text-gray-300">
-                                <span className="font-medium">Phone:</span> {course.tutor.phone}
+                        <div className="flex-grow space-y-6">
+                          <Card className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+                            <CardContent className="p-6">
+                              <h5 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">Biography</h5>
+                              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                                {memoizedCourse.tutor.bio || "Passionate educator helping students succeed."}
                               </p>
-                            </div>
+                            </CardContent>
+                          </Card>
+                          {memoizedCourse.tutor.phone && (
+                            <Card className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+                              <CardContent className="p-6">
+                                <h5 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">Contact</h5>
+                                <p className="text-gray-700 dark:text-gray-300">
+                                  <span className="font-semibold">Phone:</span> {memoizedCourse.tutor.phone}
+                                </p>
+                              </CardContent>
+                            </Card>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-8">
-                        <User className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600 dark:text-gray-300">Instructor information not available.</p>
+                      <div className="text-center py-12">
+                        <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Instructor unavailable</h4>
+                        <p className="text-gray-600 dark:text-gray-300">Details about the instructor coming soon.</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               </TabsContent>
-              
-              {/* Reviews Tab */}
-              <TabsContent value="reviews" className="mt-6">
-                <Card>
-                  <CardContent className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">Student Reviews</h3>
-                    <div className="flex flex-col md:flex-row gap-8 mb-8">
-                      <div className="md:w-1/3 bg-gray-50 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
-                        <div className="text-5xl font-bold text-gray-800 dark:text-white mb-3">{course.ratings || 4.8}</div>
-                        <div className="flex justify-center mb-3">
+
+              <TabsContent value="reviews" className="space-y-6">
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-8 space-y-8">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Student Reviews</h3>
+
+                    {/* Review form always visible for testing */}
+                    <Card className="bg-gray-50 dark:bg-gray-800/50">
+                      <CardContent className="p-6 space-y-4">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Submit Your Review</h4>
+                        <div className="flex items-center gap-2">
                           {[1, 2, 3, 4, 5].map((star) => (
-                            <Star 
-                              key={star} 
-                              className="h-6 w-6 text-yellow-400 fill-yellow-400" 
-                            />
+                            <button
+                              key={star}
+                              onClick={() => setNewReview((prev) => ({ ...prev, rating: star }))}
+                              className="focus:outline-none"
+                            >
+                              <Star
+                                className={`h-6 w-6 ${
+                                  star <= newReview.rating
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-300 dark:text-gray-600"
+                                }`}
+                              />
+                            </button>
                           ))}
                         </div>
-                        <div className="text-gray-600 dark:text-gray-300">{course.reviewCount || 42} Reviews</div>
+                        <div>
+                          <Label htmlFor="review-comment" className="text-gray-700 dark:text-gray-300">
+                            Your Feedback
+                          </Label>
+                          <Textarea
+                            id="review-comment"
+                            value={newReview.comment}
+                            onChange={(e) => setNewReview((prev) => ({ ...prev, comment: e.target.value }))}
+                            placeholder="Share your thoughts about the course..."
+                            className="mt-2"
+                            rows={4}
+                          />
+                        </div>
+                        <Button
+                          onClick={handleSubmitReview}
+                          disabled={submittingReview}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          {submittingReview ? (
+                            <Loader className="mr-2 h-5 w-5 animate-spin" />
+                          ) : (
+                            <Star className="mr-2 h-5 w-5" />
+                          )}
+                          Submit Review
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {loadingReviews ? (
+                      <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div
+                            key={index}
+                            className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
+                          ></div>
+                        ))}
                       </div>
-                      
-                      <div className="md:w-2/3">
-                        <div className="space-y-3">
-                          <div className="flex items-center">
-                            <div className="w-16 text-sm text-gray-600 dark:text-gray-300">5 stars</div>
-                            <div className="flex-1 mx-2">
-                              <Progress value={85} className="h-2 bg-gray-200 dark:bg-gray-700" />
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
+                            <CardContent className="p-6 text-center">
+                              <div className="text-5xl font-bold text-gray-900 dark:text-white mb-3">
+                                {averageRating}
+                              </div>
+                              <div className="flex justify-center mb-3">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-6 w-6 ${
+                                      star <= averageRating
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-gray-300 dark:text-gray-600"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <div className="text-gray-600 dark:text-gray-300 font-medium">
+                                {reviews.length} Reviews
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <div className="md:col-span-2">
+                            <div className="space-y-4">
+                              {[5, 4, 3, 2, 1].map((star) => (
+                                <div key={star} className="flex items-center gap-4">
+                                  <div className="w-16 text-sm text-gray-600 dark:text-gray-300 font-medium">
+                                    {star} star{star !== 1 ? "s" : ""}
+                                  </div>
+                                  <div className="flex-1">
+                                    <Progress
+                                      value={
+                                        reviews.length > 0
+                                          ? (ratingDistribution[star] / reviews.length) * 100
+                                          : 0
+                                      }
+                                      className="h-3"
+                                    />
+                                  </div>
+                                  <div className="w-12 text-sm text-gray-600 dark:text-gray-300 text-right font-medium">
+                                    {reviews.length > 0
+                                      ? `${Math.round((ratingDistribution[star] / reviews.length) * 100)}%`
+                                      : "0%"}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="w-10 text-sm text-gray-600 dark:text-gray-300 text-right">85%</div>
                           </div>
-                          <div className="flex items-center">
-                            <div className="w-16 text-sm text-gray-600 dark:text-gray-300">4 stars</div>
-                            <div className="flex-1 mx-2">
-                              <Progress value={10} className="h-2 bg-gray-200 dark:bg-gray-700" />
+                        </div>
+
+                        <Separator />
+
+                        <div className="space-y-6">
+                          {reviews.length === 0 ? (
+                            <div className="text-center py-12">
+                              <Star className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                              <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                No Reviews Yet
+                              </h4>
+                              <p className="text-gray-600 dark:text-gray-300">
+                                Be the first to review this course!
+                              </p>
                             </div>
-                            <div className="w-10 text-sm text-gray-600 dark:text-gray-300 text-right">10%</div>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-16 text-sm text-gray-600 dark:text-gray-300">3 stars</div>
-                            <div className="flex-1 mx-2">
-                              <Progress value={3} className="h-2 bg-gray-200 dark:bg-gray-700" />
-                            </div>
-                            <div className="w-10 text-sm text-gray-600 dark:text-gray-300 text-right">3%</div>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-16 text-sm text-gray-600 dark:text-gray-300">2 stars</div>
-                            <div className="flex-1 mx-2">
-                              <Progress value={1} className="h-2 bg-gray-200 dark:bg-gray-700" />
-                            </div>
-                            <div className="w-10 text-sm text-gray-600 dark:text-gray-300 text-right">1%</div>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-16 text-sm text-gray-600 dark:text-gray-300">1 star</div>
-                            <div className="flex-1 mx-2">
-                              <Progress value={1} className="h-2 bg-gray-200 dark:bg-gray-700" />
-                            </div>
-                            <div className="w-10 text-sm text-gray-600 dark:text-gray-300 text-right">1%</div>
-                          </div>
+                          ) : (
+                            formattedReviews.map((review, index) => (
+                              <ReviewItem
+                                key={index}
+                                reviewerName={review.reviewerName}
+                                timeAgo={review.timeAgo}
+                                rating={review.rating}
+                                comment={review.comment}
+                                avatarFallback={review.avatarFallback}
+                                avatarBgClass={review.avatarBgClass}
+                                avatarTextClass={review.avatarTextClass}
+                              />
+                            ))
+                          )}
                         </div>
-                      </div>
-                    </div>
-                    
-                    <Separator className="my-6" />
-                    
-                    <div className="space-y-6">
-                      {/* Sample review 1 */}
-                      <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-                        <div className="flex items-center mb-3">
-                          <Avatar className="h-10 w-10 mr-3">
-                            <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">JD</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-gray-800 dark:text-white">John Doe</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">2 weeks ago</div>
-                          </div>
-                        </div>
-                        <div className="flex mb-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star 
-                              key={star} 
-                              className="h-4 w-4 text-yellow-400 fill-yellow-400" 
-                            />
-                          ))}
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          This course exceeded my expectations! The instructor explains complex concepts in a way that's
-                          easy to understand, and the practical exercises really helped solidify my learning.
-                        </p>
-                      </div>
-                      
-                      {/* Sample review 2 */}
-                      <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-                        <div className="flex items-center mb-3">
-                          <Avatar className="h-10 w-10 mr-3">
-                            <AvatarFallback className="bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400">JS</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-gray-800 dark:text-white">Jane Smith</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">1 month ago</div>
-                          </div>
-                        </div>
-                        <div className="flex mb-2">
-                          {[1, 2, 3, 4].map((star) => (
-                            <Star 
-                              key={star} 
-                              className="h-4 w-4 text-yellow-400 fill-yellow-400" 
-                            />
-                          ))}
-                          <Star className="h-4 w-4 text-gray-300" />
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          Great course with lots of valuable information. I would have liked more practical examples,
-                          but overall I learned a lot and would recommend it to others.
-                        </p>
-                      </div>
-                      
-                      {/* Sample review 3 */}
-                      <div>
-                        <div className="flex items-center mb-3">
-                          <Avatar className="h-10 w-10 mr-3">
-                            <AvatarFallback className="bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400">RJ</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-gray-800 dark:text-white">Robert Johnson</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">2 months ago</div>
-                          </div>
-                        </div>
-                        <div className="flex mb-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star 
-                              key={star} 
-                              className="h-4 w-4 text-yellow-400 fill-yellow-400" 
-                            />
-                          ))}
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300">
-                          I've taken many online courses, and this is definitely one of the best. The content is
-                          well-structured, and the instructor is clearly knowledgeable and passionate about the subject.
-                        </p>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
             </Tabs>
           </div>
-          
-          {/* Sidebar */}
-          <div className="hidden lg:block">
-            <div className="sticky top-24">
-              <Card className="overflow-hidden shadow-lg border-gray-200 dark:border-gray-700">
-                <div className="aspect-video bg-gray-100 dark:bg-gray-700">
-                  {course.thumbnail ? (
-                    <img
-                      src={course.thumbnail || "/placeholder.svg"}
-                      alt={course.title}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.svg?height=192&width=384&text=Course";
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <BookOpen className="h-16 w-16 text-blue-600 dark:text-blue-400" />
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="text-3xl font-bold text-gray-800 dark:text-white">₹{course.price.toFixed(2)}</div>
-                  </div>
-                  
-                  {!isEnrolled ? (
-                    <Button
-                      className="w-full mb-4 bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={handleEnrollNow}
-                      disabled={loadingEnrollment}
-                      size="lg"
-                    >
-                      {loadingEnrollment ? (
-                        <>
-                          <Loader className="mr-2 h-4 w-4 animate-spin" />
-                          Checking enrollment...
-                        </>
-                      ) : (
-                        "Enroll Now"
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full mb-4 bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => navigate(`/student/courses/${courseId}`)}
-                      size="lg"
-                    >
-                      {/* <PlayCircle className="mr-2 h-5 w-5" /> */}
-                      Continue Learning
-                    </Button>
-                  )}
 
-                  <Button
-                    variant="outline"
-                    className={`w-full mb-6 ${
-                      inWishlist
-                        ? "border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-900/20"
-                        : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300"
-                    }`}
-                    onClick={handleToggleWishlist}
-                    disabled={loadingWishlist}
-                  >
-                    {loadingWishlist ? (
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Heart className={`mr-2 h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
-                    )}
-                    {inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
-                  </Button>
-                  
-                  <div className="space-y-4">
-                    <h4 className="font-medium text-gray-800 dark:text-white">This course includes:</h4>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center text-gray-600 dark:text-gray-300">
-                        <Award className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span>Full lifetime access</span>
-                      </div>
-                      <div className="flex items-center text-gray-600 dark:text-gray-300">
-                        <Clock className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span>{getTotalDuration()} of content</span>
-                      </div>
-                      <div className="flex items-center text-gray-600 dark:text-gray-300">
-                        <FileText className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span>{lessons.length} lessons</span>
-                      </div>
-                      <div className="flex items-center text-gray-600 dark:text-gray-300">
-                        <Download className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span>Downloadable resources</span>
-                      </div>
-                      <div className="flex items-center text-gray-600 dark:text-gray-300">
-                        <MessageSquare className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span>Community support</span>
-                      </div>
-                      <div className="flex items-center text-gray-600 dark:text-gray-300">
-                        <CheckCircle className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span>Certificate of completion</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 flex items-center justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                    >
-                      <Share2 className="mr-2 h-4 w-4" />
-                      Share
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                    >
-                      <HelpCircle className="mr-2 h-4 w-4" />
-                      Help
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="hidden lg:block">
+            <div className="sticky top-4">
+              {loading ? (
+                <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              ) : (
+                <SidebarCard
+                  course={memoizedCourse}
+                  isEnrolled={isEnrolled}
+                  loadingEnrollment={loadingEnrollment}
+                  inWishlist={inWishlist}
+                  loadingWishlist={loadingWishlist}
+                  lessons={memoizedLessons}
+                  getTotalDuration={getTotalDuration}
+                  handleEnrollNow={handleEnrollNow}
+                  handleToggleWishlist={handleToggleWishlist}
+                  navigate={navigate}
+                  courseId={courseId!}
+                  completedLessons={completedLessons}
+                  handleChatWithInstructor={handleChatWithInstructor}
+                  loadingChat={loadingChat}
+                  handleStartCall={handleStartCall}
+                  loadingCall={loadingCall}
+                />
+              )}
             </div>
           </div>
         </div>
+
+        <Dialog open={isVideoModalVisible} onOpenChange={setIsVideoModalVisible}>
+          <DialogContent className="max-w-5xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">Lesson Video</DialogTitle>
+              <DialogClose />
+            </DialogHeader>
+            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                controls
+                src={videoUrl}
+                className="w-full h-full"
+                autoPlay
+                onEnded={handleVideoEnded}
+                controlsList="nodownload"
+              />
+            </div>
+            {isEnrolled && currentLessonId && (
+              <Button
+                onClick={() => markLessonCompleted(currentLessonId)}
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Mark as Completed
+              </Button>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
-      
-      {/* Video Modal */}
-      <Dialog open={isVideoModalVisible} onOpenChange={setIsVideoModalVisible}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Lesson Video</DialogTitle>
-            <DialogClose />
-          </DialogHeader>
-          <div className="aspect-video bg-black rounded-md overflow-hidden">
-            <video
-              controls
-              src={videoUrl}
-              className="w-full h-full"
-              onError={(e) => {
-                console.error("Video playback error:", e);
-                toast.error("Failed to load video");
-              }}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
 
-export default CourseDetails;
+export default React.memo(CourseDetails);

@@ -36,3 +36,28 @@ export interface UploadResponse {
   message: string;
   document?: string;
 }
+
+
+export type TutorProfileWithCourses={
+  tutorProfile: {
+    tutorId: string
+    name?: string
+    phone?: string
+    specialization?: string
+    bio?: string
+    verificationDocUrl?: string
+    approvalStatus: "pending" | "approved" | "rejected"
+    rejectionReason?: string
+  }
+  courses: {
+    _id: string
+    title: string
+    tagline: string
+    category: string
+    difficulty: "Beginner" | "Intermediate" | "Advanced"
+    price: number
+    about: string
+    thumbnail: string
+    tutorId: string
+  }[]
+}

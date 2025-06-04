@@ -5,6 +5,13 @@ import { userAuthMiddleware } from '../middlewares/userAuthMiddleware';
 import { CustomError } from '../utils/custom.error';
 import { HTTP_STATUS } from '../shared/constant';
 import { CustomRequest } from '../middlewares/userAuthMiddleware';
+import mongoose from 'mongoose';
+import { WalletModel } from '../models/walletModel';
+import { purchaseModel } from '../models/buyCourseModal';
+import { TransactionModel } from '../models/transactionModel';
+import { ICourseService } from '../interfaces/serviceInterface/IcourseServices';
+import { CourseService } from '../services/courseServices';
+import { CourseRepository } from '../repositories/courseRepository';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
@@ -13,7 +20,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export class PaymentRoutes {
   public router: Router;
 
-  constructor() {
+  constructor(private _courseService: ICourseService = new CourseService(new CourseRepository())) {
     this.router = Router();
     this.initializeRoutes();
   }
@@ -124,6 +131,8 @@ export class PaymentRoutes {
       '/enrollment',
       userAuthMiddleware,
       async (req: Request, res: Response) => {
+        const session = await mongoose.startSession();
+        session.startTransaction();
         try {
           const { courseId, paymentIntentId, amount } = req.body;
           const user = (req as CustomRequest).user;
@@ -139,15 +148,71 @@ export class PaymentRoutes {
             throw new CustomError('Missing required fields', HTTP_STATUS.BAD_REQUEST);
           }
 
+          console.log("Updating enrollment for:", { userId, paymentIntentId, courseId, amount });
+
+          // Update enrollment
           await paymentService.updateEnrollment(courseId, paymentIntentId, amount, userId);
+
+          // Find the Purchase document using the paymentIntentId
+          const purchase = await purchaseModel
+            .findOne({
+              userId,
+              'purchase.orderId': paymentIntentId,
+            })
+            .session(session);
+
+          if (!purchase) {
+            throw new CustomError('Purchase not found for the given paymentIntentId', HTTP_STATUS.BAD_REQUEST);
+          }
+
+          // Get the purchase document's _id
+          const purchaseId = purchase._id;
+
+          // Fetch course to get tutorId
+          const course = await this._courseService.getCourseDetails(courseId);
+          if (!course || !course.tutorId) {
+            throw new CustomError('Course or tutor not found', HTTP_STATUS.BAD_REQUEST);
+          }
+          const tutorId = course.tutorId;
+
+          // Tutor Wallet Update
+          let tutorWallet = await WalletModel.findOne({
+            userId: tutorId,
+          }).session(session);
+          if (!tutorWallet) {
+            tutorWallet = new WalletModel({
+              userId: tutorId,
+              balance: 0,
+            });
+            await tutorWallet.save({ session });
+          }
+          // tutorWallet.balance += amount;
+          await tutorWallet.save({ session });
+
+          // Tutor Transaction
+          const tutorTransaction = new TransactionModel({
+            transactionId: `txn_tutor_${Date.now()}`,
+            wallet_id: tutorWallet._id,
+            purchase_id: purchaseId,
+            transaction_type: 'credit',
+            amount: amount,
+            description: `Payment for course purchase (Course ID: ${courseId})`,
+          });
+          await tutorTransaction.save({ session });
+
+          // Commit the transaction
+          await session.commitTransaction();
           res.json({ success: true });
         } catch (error: any) {
-          console.error('Error updating enrollment:', error);
+          await session.abortTransaction();
+          console.error('Error updating enrollment or transaction:', error);
           if (error instanceof CustomError) {
             res.status(error.statusCode).json({ error: error.message });
           } else {
-            res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: error.message });
+            res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ error: 'An unexpected error occurred' });
           }
+        } finally {
+          session.endSession();
         }
       }
     );

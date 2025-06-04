@@ -60,6 +60,8 @@ export type TPaginationOptions = {
   role?: string;
 };
 
+
+
 export type TCourseFilterOptions = {
   page: number;
   limit: number;

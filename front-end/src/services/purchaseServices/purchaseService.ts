@@ -6,7 +6,7 @@ export const paymentService = {
   async enroll(
     courseId: string,
     paymentIntentId: string,
-    amount: number, // In rupees
+    amount: number,
     isStripe: boolean
   ): Promise<void> {
     if (!courseId || !paymentIntentId || !amount) {

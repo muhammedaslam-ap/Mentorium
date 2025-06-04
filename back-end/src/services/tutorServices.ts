@@ -1,10 +1,11 @@
 import { S3 } from 'aws-sdk';
-import { TTutorProfileInput } from '../types/tutor';
+import { TTutorProfileInput, TutorProfileWithCourses } from '../types/tutor';
 import { ITutorProfile } from '../models/tutorProfileModel';
 import { TutorRepository } from '../repositories/tutorRepository';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { MulterS3File } from '../types/multer';
 import  TNotification  from '../types/notification';
+import { TStudent } from '../types/user';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -126,6 +127,14 @@ export class TutorService {
       throw new Error(`Failed to update tutor profile: ${error.message}`);
     }
   }
+
+  async  getEnrolledStudent(
+       tutorId: string
+     ): Promise<{ students: TStudent[]; totalRevenue: number }>{
+      const { students, totalRevenue } =
+        await this.tutorRepository.getEnrolledStudent(tutorId);
+      return {students,totalRevenue};
+  }
   async markAllNotificationsAsRead(id: string): Promise<void> {
     await this.tutorRepository.markAllNotificationsAsRead(id);
   }
@@ -167,6 +176,10 @@ export class TutorService {
   private async getCommunityMembers(communityId: string): Promise<string[]> {
 
     return [];
+  }
+
+  async getTutorProfileWithCourses(tutorId: string): Promise<TutorProfileWithCourses> {
+    return await this.tutorRepository.fetchTutorDataRepository(tutorId);
   }
   
 }

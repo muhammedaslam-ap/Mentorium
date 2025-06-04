@@ -4,6 +4,9 @@ import Stripe from 'stripe';
 import { purchaseModel } from '../models/buyCourseModal';
 import { CustomError } from '../utils/custom.error';
 import { HTTP_STATUS } from '../shared/constant';
+import { courseModel } from '../models/course';
+import { userModel } from '../models/userModel';
+import { WalletModel } from '../models/walletModel';
 
 interface PurchaseDetails {
   courseId: string;
@@ -60,57 +63,66 @@ export class PaymentService {
   }
 
   async createStripePayment(
-    paymentIntentId: string,
-    amount: number,
-    currency: string,
-    courseId: string,
-    userId: string
-  ): Promise<void> {
-    console.log("createStripePayment called", { paymentIntentId, amount, currency, courseId, userId });
-
-    if (!isValidObjectId(courseId) || !isValidObjectId(userId)) {
-      console.error("Validation error: Invalid courseId or userId", { courseId, userId });
-      throw new CustomError('Invalid courseId or userId', HTTP_STATUS.BAD_REQUEST);
-    }
-
-    try {
-      console.log("Checking for existing purchase", { userId, paymentIntentId });
-      const existingPurchase = await purchaseModel.findOne({
-        userId,
-        'purchase.orderId': paymentIntentId,
-      });
-
-      if (existingPurchase) {
-        console.log("Purchase already exists for paymentIntentId:", paymentIntentId);
-        return;
-      }
-
-      console.log("Adding purchase to database with status 'pending'");
-      const updateResult = await purchaseModel.findOneAndUpdate(
-        { userId },
-        {
-          $push: {
-            purchase: {
-              courseId,
-              orderId: paymentIntentId,
-              amount,
-              currency,
-              status: 'pending',
-              createdAt: new Date(),
-            } as PurchaseDetails,
-          },
-        },
-        { upsert: true }
-      );
-      console.log("createStripePayment database update result:", updateResult);
-    } catch (error) {
-      console.error("createStripePayment database error:", error);
-      throw new CustomError(
-        'Failed to create payment record in database',
-        HTTP_STATUS.INTERNAL_SERVER_ERROR
-      );
-    }
+  paymentIntentId: string,
+  amount: number,
+  currency: string,
+  courseId: string,
+  userId: string
+): Promise<void> {
+  if (!isValidObjectId(courseId) || !isValidObjectId(userId)) {
+    console.error("Validation error: Invalid courseId or userId", { courseId, userId });
+    throw new CustomError('Invalid courseId or userId', HTTP_STATUS.BAD_REQUEST);
   }
+
+  try {
+    const tutor = await courseModel.findById(courseId);
+    if (!tutor || !tutor.tutorId) {
+      throw new CustomError('Tutor not found for this course', HTTP_STATUS.NOT_FOUND);
+    }
+
+    await WalletModel.findOneAndUpdate(
+      { userId: tutor.tutorId },
+      { $inc: { balance: amount } },
+      { upsert: true, new: true }
+    );
+
+    const existingPurchase = await purchaseModel.findOne({
+      userId,
+      'purchase.orderId': paymentIntentId,
+    });
+
+    if (existingPurchase) {
+      console.log("Purchase already exists for paymentIntentId:", paymentIntentId);
+      return;
+    }
+
+    await purchaseModel.findOneAndUpdate(
+      { userId },
+      {
+        $push: {
+          purchase: {
+            courseId,
+            orderId: paymentIntentId,
+            amount,
+            currency,
+            status: 'pending',
+            createdAt: new Date(),
+          } as PurchaseDetails,
+        },
+      },
+      { upsert: true }
+    );
+
+    console.log("Payment recorded successfully.");
+  } catch (error) {
+    console.error("Error in createStripePayment:", error);
+    throw new CustomError(
+      'Failed to process Stripe payment',
+      HTTP_STATUS.INTERNAL_SERVER_ERROR
+    );
+  }
+}
+
 
   async updateStripePayment(
     paymentIntentId: string,

@@ -5,6 +5,7 @@ interface TutorData {
   name: string;
   email: string;
   role: string;
+  isAccepted:boolean
 }
 
 interface TutorState {

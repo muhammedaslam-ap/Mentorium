@@ -8,8 +8,12 @@ import {
   TCourseAdd,
   TCourseResponse,
 } from "../types/course";
-import { TCourseFilterOptions } from "../types/user";
+import { TCourseFilterOptions, TStudent, TUserModel } from "../types/user";
 import { tutorProfileModel } from "../models/tutorProfileModel";
+import { userModel } from "../models/userModel";
+import { purchaseModel } from "../models/buyCourseModal";
+import mongoose, { Types } from 'mongoose';
+
 
 export class CourseRepository implements ICourseRepository {
     async findByIdAndTutor(courseId: string, tutorId: string): Promise<TCourseResponse | null> {
@@ -45,6 +49,10 @@ export class CourseRepository implements ICourseRepository {
           return formattedCourse;
     }      
 
+     async getCourseDetails(courseId: string): Promise<TCourseAdd | null> {
+    const course = await courseModel.findById(courseId);
+    return course;
+  }
       
     async addCourse(
         data: TCourseAdd,
@@ -108,6 +116,30 @@ export class CourseRepository implements ICourseRepository {
   async deleteCourse(courseId: string): Promise<void> {
     await courseModel.findByIdAndDelete({ _id: courseId });
   }
+
+
+async getAllStudents(courseId: string): Promise<TUserModel[]> {
+  const purchases = await purchaseModel.find({
+    purchase: {
+      $elemMatch: {
+        courseId: new Types.ObjectId(courseId),
+        status: "succeeded"
+      }
+    }
+  }).select("userId").lean();
+
+  const userIds = purchases.map(p => p.userId);
+  const uniqueUserIds = [...new Set(userIds.map(id => id.toString()))];
+
+  const students = await userModel.find({
+    _id: { $in: uniqueUserIds }
+  }).lean();
+
+      console.log("studendetd",students,uniqueUserIds,userIds,purchases)
+
+  return students;
+}
+
 
  async getAllCourses(
   options: TCourseFilterOptions

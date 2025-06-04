@@ -39,10 +39,10 @@ export class TutorRoutes {
     this.router.get(
       "/notifications",
       userAuthMiddleware,
-      authorizeRole(["tutor", "student"]), // Allow both roles
+      authorizeRole(["tutor", "student"]), 
       checkUserBlocked,
       (req: Request, res: Response) => {
-        console.log("Fetching notifications");
+        console.log("Fetching notifications 3");
         injectedTutorController.getNotification(req as CustomRequest, res);
       }
     );
@@ -50,20 +50,22 @@ export class TutorRoutes {
     this.router.put(
       "/notifications/read-all",
       userAuthMiddleware,
-      authorizeRole(["tutor", "student"]), // Allow both roles
+      authorizeRole(["tutor", "student"]), 
       checkUserBlocked,
-      (req: Request, res: Response) =>
+      (req: Request, res: Response) =>{
+                console.log("notificaiton 1")
         injectedTutorController.markAllNotificationsAsRead(req as CustomRequest, res)
-    );
+    });
 
     this.router.put(
       "/notifications/:id/read",
       userAuthMiddleware,
-      authorizeRole(["tutor", "student"]), // Allow both roles
+      authorizeRole(["tutor", "student"]),
       checkUserBlocked,
-      (req: Request, res: Response) =>
+      (req: Request, res: Response) =>{
+        console.log("notificaiton 2")
         injectedTutorController.markNotificationAsRead(req as CustomRequest, res)
-    );
+   } );
   
    
     this.router.put(
@@ -75,6 +77,27 @@ export class TutorRoutes {
       (req: Request, res: Response) =>
         injectedTutorController.updateTutorProfile(req as CustomRequest, res)
     );
+
+     this.router.get(
+       "/students",
+       userAuthMiddleware,
+       authorizeRole(["tutor","student"]),
+       checkUserBlocked,
+
+       (req: Request, res: Response) =>
+         injectedTutorController.getEnrolledStudent(req as CustomRequest, res)
+     );
+
+
+      this.router.get(
+       "/tutor/:tutorId",
+       userAuthMiddleware,
+       authorizeRole(["tutor","student"]),
+       checkUserBlocked,
+
+       (req: Request, res: Response) =>
+         injectedTutorController.tutorProfile( req as CustomRequest , res)
+     );
 
 
     this.router.get(

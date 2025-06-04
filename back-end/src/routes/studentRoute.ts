@@ -59,9 +59,9 @@ export class StudentRoutes {
 
     this.router.get(
       "/all-courses",
-      userAuthMiddleware,
-      authorizeRole(["student"]),
-      checkUserBlocked,
+      // userAuthMiddleware,
+      // authorizeRole(["student"]),
+      // checkUserBlocked,
       (req: Request, res: Response) =>{
         console.log('hehheehhehehhehhehehe')
         injectedCourseController.getAllCourses(req as CustomRequest, res)

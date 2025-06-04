@@ -3,7 +3,7 @@
 interface TNotification {
   _id: string;
   userId: string;
-  type: "approval" | "rejection" | "chat_message";
+  type: "approval" | "rejection" | "chat_message"|"call_request";
   message: string;
   reason?: string | null;
   read: boolean;

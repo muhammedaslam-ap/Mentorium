@@ -64,10 +64,10 @@ export const userAuthMiddleware = async (
       .json({ message: ERROR_MESSAGES.INVALID_TOKEN });
   }
 };
-
 export const authorizeRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = (req as CustomRequest).user;
+    console.log('role',user.role)
     console.log("authorizeRole - Request URL:", req.originalUrl); // Debug
     console.log("authorizeRole - User:", user); // Debug
     if (!user) {

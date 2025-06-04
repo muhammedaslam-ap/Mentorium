@@ -35,6 +35,16 @@ export class PurchaseRoute {
     );
 
     this.router.get(
+      "/Purchase-history",
+      userAuthMiddleware,
+      checkUserBlocked, 
+      authorizeRole(["student"]),
+      (req: Request, res: Response) => {
+        injectedBuyCourseController.myPurchaseHistory(req as CustomRequest, res);
+      }
+    );
+
+    this.router.get(
       "/enrollments/:courseId",
       userAuthMiddleware,
       (req: Request, res: Response) => {

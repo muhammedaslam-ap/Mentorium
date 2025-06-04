@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { User, Users, DollarSign, Book, ClipboardList, MessageSquare, LogOut, LayoutDashboard } from "lucide-react"
+import { User, Users, DollarSign, Book, ClipboardList, MessageSquare, LogOut, LayoutDashboard, Wallet } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { useState, useEffect } from "react"
@@ -36,15 +36,16 @@ export function Sidebar({ sidebarOpen } : {sidebarOpen : boolean}) {
   const navItems = [
     { icon: <LayoutDashboard className="h-4 w-4" />, name: "Dashboard", path: "/tutor/home", disabled: false },
     { icon: <User className="h-4 w-4" />, name: "Profile", path: "/tutor/profile", disabled: isAccepted === false },
-    { icon: <Users className="h-4 w-4" />, name: "Students", path: "/tutor/students", disabled: isAccepted === false },
-    {
-      icon: <DollarSign className="h-4 w-4" />,
-      name: "Revenue",
-      path: "/tutor/revenue",
-      disabled: isAccepted === false,
-    },
+    // { icon: <Users className="h-4 w-4" />, name: "Students", path: "/tutor/students", disabled: isAccepted === false },
+    // {
+    //   icon: <DollarSign className="h-4 w-4" />,
+    //   name: "Revenue",
+    //   path: "/tutor/revenue",
+    //   disabled: isAccepted === false,
+    // },
     { icon: <Book className="h-4 w-4" />, name: "Courses", path: "/tutor/courses", disabled: isAccepted === false },
-    { icon: <ClipboardList className="h-4 w-4" />, name: "Quiz", path: "/tutor/quiz", disabled: isAccepted === false },
+    // { icon: <ClipboardList className="h-4 w-4" />, name: "Quiz", path: "/tutor/quiz", disabled: isAccepted === false },
+    { icon: <Wallet className="h-4 w-4" />, name: "Wallet", path: "/tutor/wallet", disabled: isAccepted === false },
     { icon: <MessageSquare className="h-4 w-4" />, name: "Chat", path: "/tutor/chat", disabled: isAccepted === false },
   ]
 
