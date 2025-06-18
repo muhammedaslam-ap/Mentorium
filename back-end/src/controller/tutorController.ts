@@ -6,6 +6,7 @@ import { TutorService } from '../services/tutorServices';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../shared/constant';
 import { CustomError } from '../utils/custom.error';
+import { createSecureUrl } from '../utils/cloudinaryURL';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -279,14 +280,27 @@ export class TutorController {
     try {
       const { tutorId } = req.params;
 
-      const data = await this.tutorService.getTutorProfileWithCourses(tutorId);
-      res.status(200).json({
-        success: true,
-        data,
-      });
+      const {tutorProfile ,courses} = await this.tutorService.getTutorProfileWithCourses(tutorId);
 
-      console.log("hyhyhyhyhyhyhy",data)
-    } catch (error: any) {
+            const updatedCourses = courses
+        ? await Promise.all(
+            courses.map(async (course) => {
+              if (course.thumbnail) {
+                console.log("COURSE THUMBNAIL", course.thumbnail);
+                course.thumbnail = await createSecureUrl(course.thumbnail, 'image');
+              }
+              return course;
+            })
+          )
+        : [];
+  
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        courses: updatedCourses,
+        tutorProfile,
+      });
+          } catch (error: any) {
       res.status(400).json({
         success: false,
         message: error.message || "Something went wrong",
@@ -294,3 +308,4 @@ export class TutorController {
     }
   }
 }
+

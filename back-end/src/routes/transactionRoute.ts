@@ -3,6 +3,7 @@ import {
   authorizeRole,
   userAuthMiddleware,
 } from "../middlewares/userAuthMiddleware";
+import { adminAuthMiddleware } from "../middlewares/adminAuthMiddleware";
 import { checkUserBlocked } from "../middlewares/checkUserBlocked";
 import { injectedTransactionController } from "../di/transactionInjection";
 
@@ -24,8 +25,18 @@ export class TransactionRoutes {
       (req: Request, res: Response) =>
         injectedTransactionController.transactionDetails(req, res)
     );
-  }
-}
+  
 
+    this.router.get(
+      "/dashBoard",
+      adminAuthMiddleware,
+      authorizeRole(["admin"]),
+      (req: Request, res: Response) =>{
+        console.log("hyhyhyhy12345")
+        injectedTransactionController.getDashboard(req, res)
+    });
+  }
+
+}
 
 export default new TransactionRoutes().router;

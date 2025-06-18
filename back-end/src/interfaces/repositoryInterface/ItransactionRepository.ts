@@ -1,3 +1,4 @@
+import { AdminDashboardData } from "../../types/adminDashBoard";
 import { TTransaction } from "../../types/transation";
 
 export interface ITransactionRepository {
@@ -14,4 +15,5 @@ export interface ITransactionRepository {
     transactions: TTransaction[] | null;
     totalTransaction: number;
   }>;
+  fetchDashboardStats(): Promise<AdminDashboardData>
 }

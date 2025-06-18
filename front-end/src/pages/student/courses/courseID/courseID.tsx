@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import {
   BookOpen,
@@ -34,10 +35,11 @@ import { wishlistService } from "@/services/wishlistServices/wishlistService";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
 import { useInView } from "react-intersection-observer";
 import Header from "../../components/header";
-import { useSelector } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import io, { Socket } from "socket.io-client";
+import { setVideoCallUser, setShowVideoCallUser, setRoomIdUser } from "@/redux/slice/userSlice";
 
 // Utility to debounce a function
 const debounce = (func: (...args: any[]) => void, wait: number) => {
@@ -668,6 +670,7 @@ const ReviewItem = ({
 const CourseDetails = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -689,16 +692,35 @@ const CourseDetails = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const currentLessonIdRef = useRef<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const { ref: loadMoreRef, inView } = useInView();
   const lessonsPerPage = 10;
   const currentUser = useSelector((state: any) => state.user.userDatas);
   const studentId = currentUser?._id || currentUser?.id;
 
+  // Initialize socket
+  useEffect(() => {
+    if (!studentId) return;
+    socketRef.current = io(import.meta.env.VITE_AUTH_BASEURL || "http://localhost:3000", {
+      query: { userId: studentId },
+    });
+    socketRef.current.on("connect", () => {
+      console.log("Socket connected:", socketRef.current?.id);
+      socketRef.current?.emit("join_user", studentId);
+    });
+    socketRef.current.on("error", ({ message }) => {
+      toast.error(message);
+    });
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, [studentId]);
+
   const courseDetails = useMemo(
     () => ({
       _id: course?._id,
       title: course?.title,
-      tutorId: course?.tutorId,
+      tutorId: course?.tutorId || course?.tutor?._id,
     }),
     [course]
   );
@@ -741,7 +763,7 @@ const CourseDetails = () => {
       return;
     }
     if (!courseId || !studentId || !courseDetails.tutorId) {
-      toast.error("Course or user data not loaded");
+      toast.error("Course, user, or tutor data not loaded");
       console.error("handleStartCall: Missing data", {
         courseId,
         studentId,
@@ -752,18 +774,28 @@ const CourseDetails = () => {
 
     setLoadingCall(true);
     try {
-      const roomId = `videocall_${courseDetails._id}_${studentId}_${courseDetails.tutorId}`;
-      navigate(`/video-call/${roomId}`, {
-        state: {
-          isInitiator: true,
-          courseTitle: courseDetails.title,
-          userId: studentId,
-          tutorId: courseDetails.tutorId,
-        },
+      const roomId = `room_${Date.now()}_${studentId}_${courseDetails.tutorId}`;
+      console.log("Initiating call with:", {
+        courseId,
+        studentId,
+        tutorId: courseDetails.tutorId,
+        courseTitle: courseDetails.title,
+        roomId,
       });
+
+      // Dispatch Redux actions to set up video call
+      dispatch(
+        setVideoCallUser({
+          tutorId: courseDetails.tutorId,
+          courseId,
+          courseTitle: courseDetails.title,
+        })
+      );
+      dispatch(setRoomIdUser(roomId));
+      dispatch(setShowVideoCallUser(true));
     } catch (error: any) {
       console.error("Error starting call:", error);
-      toast.error("Failed to initiate call");
+      toast.error(error.message || "Failed to initiate call");
     } finally {
       setLoadingCall(false);
     }
@@ -772,9 +804,11 @@ const CourseDetails = () => {
   const handleStartCall = useCallback(debounce(handleStartCallInternal, 1000), [
     isEnrolled,
     courseId,
-    navigate,
     studentId,
     courseDetails,
+    dispatch,
+    currentUser,
+    navigate,
   ]);
 
   useEffect(() => {
@@ -1328,6 +1362,13 @@ const CourseDetails = () => {
                               </CardContent>
                             </Card>
                           )}
+                          <Button
+                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => navigate(`/student/tutor/${memoizedCourse.tutor?._id || memoizedCourse.tutorId}`)}
+                            disabled={!memoizedCourse.tutor?._id && !memoizedCourse.tutorId}
+                          >
+                            View Tutor Profile
+                          </Button>
                         </div>
                       </div>
                     ) : (

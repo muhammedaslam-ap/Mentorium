@@ -1,5 +1,6 @@
 import { ITransactionRepository } from "../interfaces/repositoryInterface/ItransactionRepository";
 import { ITransactionService } from "../interfaces/serviceInterface/ITransactionService";
+import { AdminDashboardData } from "../types/adminDashBoard";
 import { TTransaction } from "../types/transation";
 
 export class TransactionService implements ITransactionService {
@@ -24,4 +25,7 @@ export class TransactionService implements ITransactionService {
       filters
     );
   }
+   async fetchDashboardStats(): Promise<AdminDashboardData> {
+         return await this._transactionRepository.fetchDashboardStats();
+   }
 }

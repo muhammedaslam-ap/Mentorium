@@ -51,7 +51,7 @@ async  getReviewsByCourseId(courseId: string): Promise<PopulatedReview[]> {
           course_id: review.course_id.toString(),
           user: {
             _id: '',
-            name: 'Unknown User',
+            name: 'User',
           },
           rating: review.rating,
           comment: review.comment,

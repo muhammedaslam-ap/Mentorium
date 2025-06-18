@@ -25,6 +25,7 @@ import { WalletRoutes } from "./routes/walletRoute";
 import { ProgressRoutes } from "./routes/progressRoute";
 import { TransactionRoutes } from "./routes/transactionRoute";
 import { ReviewRoutes } from "./routes/reviewRoute";
+import videoCallRouter from "./routes/videoCallRoute";
 
 connectDB();
 
@@ -68,6 +69,7 @@ try {
   app.use("/progress", new ProgressRoutes().router);
   app.use("/transaction", new TransactionRoutes().router);
   app.use("/reviews", new ReviewRoutes().router);
+  app.use("/api",  videoCallRouter);
 
 
 
@@ -81,7 +83,5 @@ app.use((error: CustomError, req: Request, res: Response, next: NextFunction) =>
   console.error(`Error in ${req.method} ${req.url}:`, error);
   handleError(error, req, res, next);
 });
-
-
 
 export { app, httpServer };

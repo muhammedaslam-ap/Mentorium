@@ -1,5 +1,7 @@
 import { ITransactionRepository } from "../interfaces/repositoryInterface/ItransactionRepository";
+import { purchaseModel } from "../models/buyCourseModal";
 import { TransactionModel } from "../models/transactionModel";
+import { AdminDashboardData } from "../types/adminDashBoard";
 import { TTransaction } from "../types/transation";
 
 export class TransactionRepository implements ITransactionRepository {
@@ -67,6 +69,85 @@ export class TransactionRepository implements ITransactionRepository {
     return {
       transactions: paginatedTransactions as TTransaction[],
       totalTransaction,
+    };
+  }
+
+
+   async fetchDashboardStats(): Promise<AdminDashboardData> {
+    const totalRevenueAgg = await purchaseModel.aggregate([
+      { $unwind: "$purchase" },
+      { $match: { "purchase.status": "succeeded" } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$purchase.amount" },
+          totalPurchases: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const totalRevenue = totalRevenueAgg[0]?.totalRevenue || 0;
+    const totalPurchases = totalRevenueAgg[0]?.totalPurchases || 0;
+
+    const totalTransactions = await TransactionModel.countDocuments({});
+
+    const monthlySales = await purchaseModel.aggregate([
+      { $unwind: "$purchase" },
+      { $match: { "purchase.status": "succeeded" } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$purchase.createdAt" } },
+          revenue: { $sum: "$purchase.amount" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const salesByMonth = monthlySales.map((item) => ({
+      month: item._id,
+      revenue: item.revenue,
+      count: item.count,
+    }));
+    const recentTransactions = await TransactionModel.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate({
+        path: "wallet_id",
+        populate: {
+          path: "userId",
+          model: "user",
+          select: "_id name email",
+        },
+      })
+      .lean();
+
+
+    const formattedTransactions = recentTransactions.map((tx) => {
+    const user = (tx.wallet_id as any)?.userId as any;
+
+      return {
+        transactionId: tx.transactionId,
+        amount: tx.amount,
+        transaction_type: tx.transaction_type,
+        description: tx.description,
+        date: tx.transaction_date.toISOString(), 
+        user: {
+          _id: user?._id?.toString() || "",
+          name: user?.name || "",
+          email: user?.email || "",
+        },
+      };
+    });
+
+
+
+    return {
+      totalRevenue,
+      totalPurchases,
+      totalTransactions,
+      salesByMonth,
+      recentTransactions: formattedTransactions,
     };
   }
 }

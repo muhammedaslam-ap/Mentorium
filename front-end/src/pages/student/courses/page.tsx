@@ -1,3 +1,4 @@
+"use client"
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
@@ -64,11 +65,11 @@ const AllCoursesPage: React.FC = () => {
 
   const coursesPerPage = 9;
 
-  const fetchCourses = useCallback(async () => {
+  const fetchCourses = useCallback(async (page: number = currentPage) => {
     setLoading(true);
     try {
       const filterOptions: CourseFilterOptions = {
-        page: currentPage,
+        page,
         limit: coursesPerPage,
         search: searchQuery.trim(),
         category: selectedCategories.length > 0 ? selectedCategories.map(c => c.trim()).join(",") : undefined,
@@ -85,7 +86,7 @@ const AllCoursesPage: React.FC = () => {
         }
       });
 
-      console.log("Fetching courses with filter options:", filterOptions);
+      console.log("Fetching courses with filter options:", { ...filterOptions, page });
       console.log("Query parameters:", params.toString());
       const response = await courseService.getAllCourse(params);
       console.log("API Response:", response);
@@ -104,23 +105,31 @@ const AllCoursesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchQuery, selectedCategories, selectedDifficulties, priceRange, sortOption]);
+  }, [searchQuery, selectedCategories, selectedDifficulties, priceRange, sortOption, coursesPerPage]);
 
-  // Trigger fetchCourses when selectedCategories or selectedDifficulties change
+  // Consolidated useEffect for all filter and page changes
   useEffect(() => {
-    setCurrentPage(1);
-    fetchCourses();
-  }, [selectedCategories, selectedDifficulties, fetchCourses]);
+    // Reset to page 1 only when filters change, not on page change
+    if (
+      searchQuery !== "" ||
+      selectedCategories.length > 0 ||
+      selectedDifficulties.length > 0 ||
+      priceRange[0] > 0 ||
+      priceRange[1] < 1500 ||
+      sortOption !== "popular"
+    ) {
+      setCurrentPage(1);
+    }
+    fetchCourses(currentPage);
+  }, [searchQuery, selectedCategories, selectedDifficulties, priceRange, sortOption, fetchCourses, currentPage]);
 
-  // Initial fetch and other filter changes
-  useEffect(() => {
-    fetchCourses();
-  }, [currentPage, searchQuery, priceRange, sortOption, fetchCourses]);
-
-  const debouncedSearch = debounce(() => {
-    setCurrentPage(1);
-    fetchCourses();
-  }, 500);
+  const debouncedSearch = useCallback(
+    debounce(() => {
+      setCurrentPage(1);
+      fetchCourses(1);
+    }, 500),
+    [fetchCourses]
+  );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -153,18 +162,22 @@ const AllCoursesPage: React.FC = () => {
 
   const handlePriceChangeEnd = () => {
     setCurrentPage(1);
-    fetchCourses();
+    fetchCourses(1);
   };
 
   const handleSortChange = (value: string) => {
     setSortOption(value);
     setCurrentPage(1);
-    fetchCourses();
+    fetchCourses(1);
   };
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (page !== currentPage && page > 0 && page <= Math.ceil(totalCourses / coursesPerPage)) {
+      console.log("Changing page to:", page);
+      setCurrentPage(page);
+      fetchCourses(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleViewCourse = (courseId: string) => {
@@ -178,7 +191,7 @@ const AllCoursesPage: React.FC = () => {
     setPriceRange([0, 1500]);
     setSortOption("popular");
     setCurrentPage(1);
-    fetchCourses();
+    fetchCourses(1);
   };
 
   const totalPages = Math.ceil(totalCourses / coursesPerPage);

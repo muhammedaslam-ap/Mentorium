@@ -13,7 +13,7 @@ export class TransactionController {
   async transactionDetails(req: Request, res: Response) {
     try {
 
-      let { walletId, courseName, startDate, endDate } = req.query;
+  let { walletId, courseName, startDate, endDate } = req.query;
  const filters = {
    courseName: typeof courseName === "string" ? courseName : undefined,
    startDate: typeof startDate === "string" ? startDate : undefined,
@@ -51,6 +51,23 @@ export class TransactionController {
       res
         .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+  }
+
+   async getDashboard(req: Request, res: Response) {
+    try {
+      const data = await this._transactionService.fetchDashboardStats();
+
+      res.status(200).json({
+        success: true,
+        data,
+      });
+      console.log('huhuhuhuh',data)
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Something went wrong",
+      });
     }
   }
 }
