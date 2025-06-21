@@ -46,6 +46,7 @@ import PurchaseHistoryPage from "./pages/student/purchase-History/purchase";
 import TutorProfile from "./pages/student/tutor/tutorProfile";
 import { SocketContextProvider } from "./provider/socket";
 import TrainerVideoCall from "./pages/tutor/videoCall/outGoingCall"; // Ensure this path matches
+import AdminWalletPage from "./pages/admin/wallet/page";
 
 function VideoCallHandler() {
   const { videoCall, showVideoCallTrainer, showIncomingCallTrainer } = useSelector(
@@ -279,6 +280,14 @@ function App() {
                   element={
                     <ProtectedAdminRoute>
                       <AdminDashboard />
+                    </ProtectedAdminRoute>
+                  }
+                />
+                <Route
+                  path="/admin/wallet"
+                  element={
+                    <ProtectedAdminRoute>
+                      <AdminWalletPage />
                     </ProtectedAdminRoute>
                   }
                 />

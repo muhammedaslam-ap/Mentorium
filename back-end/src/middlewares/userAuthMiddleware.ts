@@ -16,35 +16,45 @@ export interface CustomRequest extends Request {
   file?: Express.Multer.File;
 }
 
+
+export interface CustomJwtPayload extends JwtPayload {
+  id: string;
+  email: string;
+  role: string;
+}
+
+export interface CustomRequest extends Request {
+  user: CustomJwtPayload;
+  file?: Express.Multer.File;
+}
+
 export const userAuthMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // Check Authorization header first, then cookies
-    let token = req.headers.authorization?.startsWith("Bearer ")
-      ? req.headers.authorization.split(" ")[1]
-      : req.cookies.studentAccessToken ?? req.cookies.tutorAccessToken;
+    const token =
+      req.cookies.tutorAccessToken ??
+      req.cookies.studentAccessToken ??
+      req.cookies.adminAccessToken;
 
-    console.log("userAuthMiddleware - Token:", token); // Debug
-    console.log("userAuthMiddleware - Request URL:", req.originalUrl); // Debug
+    console.log("userAuthMiddleware - Token:", token);
+    console.log("userAuthMiddleware - Request URL:", req.originalUrl);
+
     if (!token) {
       console.log("userAuthMiddleware - No token provided");
-      res
+       res
         .status(HTTP_STATUS.UNAUTHORIZED)
         .json({ message: ERROR_MESSAGES.UNAUTHORIZED_ACCESS });
-      return;
     }
 
     const user = tokenService.verifyAccessToken(token) as CustomJwtPayload;
-    console.log("userAuthMiddleware - Decoded User:", user); // Debug
     if (!user) {
       console.log("userAuthMiddleware - Invalid user data");
-      res
+       res
         .status(HTTP_STATUS.UNAUTHORIZED)
-        .json({ message: ERROR_MESSAGES.UNAUTHORIZED_ACCESS });
-      return;
+        .json({ message: ERROR_MESSAGES.INVALID_TOKEN });
     }
 
     (req as CustomRequest).user = user;
@@ -52,10 +62,9 @@ export const userAuthMiddleware = async (
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "TokenExpiredError") {
       console.log("userAuthMiddleware - Token expired");
-      res
+       res
         .status(HTTP_STATUS.UNAUTHORIZED)
         .json({ message: ERROR_MESSAGES.TOKEN_EXPIRED });
-      return;
     }
 
     console.error("userAuthMiddleware - Invalid token:", error);
@@ -64,6 +73,8 @@ export const userAuthMiddleware = async (
       .json({ message: ERROR_MESSAGES.INVALID_TOKEN });
   }
 };
+
+
 export const authorizeRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = (req as CustomRequest).user;

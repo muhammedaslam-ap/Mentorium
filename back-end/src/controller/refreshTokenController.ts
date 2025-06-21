@@ -9,43 +9,73 @@ import {
   clearAuthCookies,
   updateCookieWithAccessToken,
 } from "../utils/cookieHelper";
-import { IRefreshTokenService } from "../interfaces/serviceInterface/refreshTokenService";
+import { RefreshTokenService } from "../services/refreshTokenService";
 
 export class RefreshTokenController {
   constructor(
-    private _refreshTokenService: IRefreshTokenService,
+    private _refreshTokenService: RefreshTokenService,
   ) {}
-  async handle(req: Request, res: Response): Promise<void> {
-    try {
+ async handle(req: Request, res: Response): Promise<void> {
+  try {
+    console.log('inside refresh token controller ======>', req.cookies);
 
-      const token =
-        req.cookies.studentRefreshToken ||
-        req.cookies.adminRefreshToken ||
-        req.cookies.tutorRefreshToken;
+    const { studentRefreshToken, tutorRefreshToken, adminRefreshToken } = req.cookies;
 
+    const refreshedRoles: string[] = [];
 
-        console.log('inside refresh token controller======>',req.cookies )
-      
-      const newTokens = this._refreshTokenService.execute(
-        token 
-      );
-      const accessTokenName = `${newTokens.role}AccessToken`;
-      updateCookieWithAccessToken(res, newTokens.accessToken, accessTokenName);
-      res
-        .status(HTTP_STATUS.OK)
-        .json({ success: true, message: SUCCESS_MESSAGES.OPERATION_SUCCESS });
-    } catch (error) {
-      clearAuthCookies(
-        res,
-        `${(req as CustomRequest).user?.role}AccessToken`,
-        `${(req as CustomRequest).user?.role}RefreshToken`
-      );
-      res
-        .status(HTTP_STATUS.UNAUTHORIZED)
-        .json({ message: ERROR_MESSAGES.INVALID_TOKEN });
-
-      console.error(error);
-
+    // Student
+    if (studentRefreshToken && !req.cookies.studentAccessToken) {
+      const studentPayload = this._refreshTokenService.verify(studentRefreshToken, "student");
+      if (studentPayload) {
+        const accessToken = this._refreshTokenService.generateAccessToken(studentPayload);
+        updateCookieWithAccessToken(res, accessToken, "studentAccessToken");
+        refreshedRoles.push("student");
+      }
     }
+
+    // Tutor
+    if (tutorRefreshToken && !req.cookies.tutorAccessToken) {
+      const tutorPayload = this._refreshTokenService.verify(tutorRefreshToken, "tutor");
+      if (tutorPayload) {
+        const accessToken = this._refreshTokenService.generateAccessToken(tutorPayload);
+        updateCookieWithAccessToken(res, accessToken, "tutorAccessToken");
+        refreshedRoles.push("tutor");
+      }
+    }
+
+    // Admin
+    if (adminRefreshToken && !req.cookies.adminAccessToken) {
+      const adminPayload = this._refreshTokenService.verify(adminRefreshToken, "admin");
+      if (adminPayload) {
+        const accessToken = this._refreshTokenService.generateAccessToken(adminPayload);
+        updateCookieWithAccessToken(res, accessToken, "adminAccessToken");
+        refreshedRoles.push("admin");
+      }
+    }
+
+    if (refreshedRoles.length > 0) {
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: "Access tokens refreshed",
+        refreshed: refreshedRoles,
+      });
+    } else {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: "No valid refresh token found or access tokens already exist",
+      });
+    }
+  } catch (error) {
+    console.error("Refresh error:", error);
+
+    clearAuthCookies(res, "studentAccessToken", "studentRefreshToken");
+    clearAuthCookies(res, "tutorAccessToken", "tutorRefreshToken");
+    clearAuthCookies(res, "adminAccessToken", "adminRefreshToken");
+
+    res.status(HTTP_STATUS.UNAUTHORIZED).json({
+      success: false,
+      message: ERROR_MESSAGES.INVALID_TOKEN,
+    });
   }
+}
 }

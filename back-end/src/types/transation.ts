@@ -19,3 +19,21 @@ export type PurchaseHistoryItem = {
   orderId: string;
   createdAt: Date;
 }
+
+
+// types/transaction.ts
+// types/transaction.ts
+
+export type TTransactionAdmin = {
+  balance: number;
+  transactions: {
+    transactionId: string;
+    amount: number;
+    transaction_type: "credit" | "debit";
+    transaction_date: Date;
+    description: string;
+    courseName?: string;
+    tutorName?: string;
+  }[];
+};
+

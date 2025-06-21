@@ -1,7 +1,7 @@
 import { ITransactionRepository } from "../interfaces/repositoryInterface/ItransactionRepository";
 import { ITransactionService } from "../interfaces/serviceInterface/ITransactionService";
 import { AdminDashboardData } from "../types/adminDashBoard";
-import { TTransaction } from "../types/transation";
+import { TTransaction, TTransactionAdmin } from "../types/transation";
 
 export class TransactionService implements ITransactionService {
   constructor(private _transactionRepository: ITransactionRepository) {}
@@ -28,4 +28,7 @@ export class TransactionService implements ITransactionService {
    async fetchDashboardStats(): Promise<AdminDashboardData> {
          return await this._transactionRepository.fetchDashboardStats();
    }
+    async AdminWalletData(): Promise<TTransactionAdmin> {
+    return await this._transactionRepository.AdminWalletData();
+  }
 }

@@ -24,6 +24,8 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { tutorService } from "@/services/tutorServices/tutorService";
+import { Header } from "../components/header";
+import { Sidebar } from "../components/sideBar";
 
 interface TutorProfile {
   name: string;
@@ -48,6 +50,7 @@ interface ProfileResponse {
 }
 
 export default function TutorProfilePage() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -395,8 +398,10 @@ export default function TutorProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white to-violet-50">
+        <Header />
         <div className="flex">
-          <main className="flex-1 p-8">
+          <Sidebar sidebarOpen={sidebarOpen} />
+          <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"}`}>
             <div className="flex h-[80vh] items-center justify-center">
               <div className="flex flex-col items-center">
                 <div className="h-12 w-12 rounded-full border-4 border-violet-200 border-t-violet-600 animate-spin"></div>
@@ -412,8 +417,10 @@ export default function TutorProfilePage() {
   if (!hasProfile && !editMode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white to-violet-50">
+        <Header />
         <div className="flex">
-          <main className="flex-1 p-4 md:p-8 flex items-center justify-center">
+          <Sidebar sidebarOpen={sidebarOpen} />
+          <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"} p-4 md:p-8 flex items-center justify-center`}>
             <div className="container mx-auto max-w-lg text-center">
               <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-700 to-purple-700 bg-clip-text text-transparent mb-4">
                 Tutor Profile
@@ -422,7 +429,7 @@ export default function TutorProfilePage() {
                 <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
                   <CardTitle className="text-violet-800">No Profile Found</CardTitle>
                   <CardDescription className="text-violet-600">
-                    You haven’t created your tutor profile yet.
+                    You haven't created your tutor profile yet.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6 pb-8">
@@ -451,8 +458,10 @@ export default function TutorProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-violet-50">
+      <Header />
       <div className="flex">
-        <main className="flex-1 p-4 md:p-8">
+        <Sidebar sidebarOpen={sidebarOpen} />
+        <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"} p-4 md:p-8`}>
           <div className="container mx-auto max-w-4xl">
             <div className="mb-8 flex justify-between items-center">
               <div>
@@ -488,7 +497,7 @@ export default function TutorProfilePage() {
                 <Clock className="h-5 w-5 text-amber-600" />
                 <AlertTitle className="text-amber-800 font-medium">Your profile is pending approval</AlertTitle>
                 <AlertDescription className="text-amber-700">
-                  Our team is reviewing your profile. You’ll be notified once the review is complete.
+                  Our team is reviewing your profile. You'll be notified once the review is complete.
                 </AlertDescription>
               </Alert>
             )}

@@ -1,5 +1,7 @@
 import { AdminDashboardData } from "../../types/adminDashBoard";
 import { TTransaction } from "../../types/transation";
+import { TTransactionAdmin } from "../../types/transation";
+
 
 export interface ITransactionRepository {
   transactionDetails(
@@ -16,4 +18,8 @@ export interface ITransactionRepository {
     totalTransaction: number;
   }>;
   fetchDashboardStats(): Promise<AdminDashboardData>
+
+
+  AdminWalletData():Promise<TTransactionAdmin>
+
 }

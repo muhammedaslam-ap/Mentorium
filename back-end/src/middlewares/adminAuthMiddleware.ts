@@ -69,7 +69,7 @@ export const decodeToken = async (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies.adminAccessToken;
+    const token = req.cookies["adminAccessToken"];
     if (!token) {
       console.log("no token");
       res

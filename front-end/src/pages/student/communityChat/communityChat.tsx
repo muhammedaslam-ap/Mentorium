@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { Send, Menu, Check, CheckCheck, Image, Users } from "lucide-react";
+import { Send, Menu, Check, CheckCheck, Image, Users, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Header from "../components/header";
 import { io, Socket } from "socket.io-client";
@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
 import { useInView } from "react-intersection-observer";
 import React from "react";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 
 interface Message {
   _id?: string;
@@ -132,7 +133,7 @@ const MessageItem = React.memo(
   )
 );
 
-// Memoized CommunityItem component
+// Memoized CommunityItem component with last message preview
 const CommunityItem = React.memo(
   ({
     community,
@@ -174,14 +175,23 @@ const CommunityItem = React.memo(
           </span>
         )}
       </div>
-      <div className="flex items-center mt-2 text-xs text-slate-500">
-        {community.members !== undefined && <span>{community.members} members</span>}
+      <div className="mt-2">
         {community.latestMessage && (
-          <>
-            {community.members !== undefined && <span className="mx-2">•</span>}
-            <span>{formatTimestamp(community.latestMessage.timestamp)}</span>
-          </>
+          <p className="text-xs text-slate-600 truncate">
+            {community.latestMessage.imageUrl 
+              ? "Sent an image" 
+              : community.latestMessage.content}
+          </p>
         )}
+        <div className="flex items-center mt-1 text-xs text-slate-500">
+          {community.members !== undefined && <span>{community.members} members</span>}
+          {community.latestMessage && (
+            <>
+              {community.members !== undefined && <span className="mx-2">•</span>}
+              <span>{formatTimestamp(community.latestMessage.timestamp)}</span>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -195,119 +205,111 @@ const StudentsModal = ({
   students: string[];
   onClose: () => void;
 }) => (
-   <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl border-0 rounded-2xl overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl font-bold">
-                Community Members
-              </CardTitle>
-              <p className="text-indigo-100 text-sm mt-1">
-                {students.length} {students.length === 1 ? 'member' : 'members'}
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
-              aria-label="Close"
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <Card className="w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl border-0 rounded-2xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="text-2xl font-bold">
+              Community Members
+            </CardTitle>
+            <p className="text-indigo-100 text-sm mt-1">
+              {students.length} {students.length === 1 ? 'member' : 'members'}
+            </p>
           </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          {students.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-6">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No students enrolled</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-center">
-                When students enroll in this course, they'll appear here.
-              </p>
-            </div>
-          ) : (
-            <div className="max-h-96 overflow-y-auto custom-scrollbar">
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {students.map((name, index) => {
-                  const initials = name
-                    .split(' ')
-                    .map(word => word.charAt(0).toUpperCase())
-                    .join('')
-                    .substring(0, 2);
-                  
-                  const colors = [
-                    'bg-blue-500',
-                    'bg-green-500',
-                    'bg-purple-500',
-                    'bg-pink-500',
-                    'bg-indigo-500',
-                    'bg-red-500',
-                    'bg-yellow-500',
-                    'bg-teal-500',
-                    'bg-orange-500',
-                    'bg-cyan-500'
-                  ];
-                  
-                  const avatarColor = colors[index % colors.length];
-                  
-                  return (
-                    <div key={index} className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
-                      <div className={`w-12 h-12 ${avatarColor} rounded-full flex items-center justify-center flex-shrink-0 shadow-md`}>
-                        <span className="text-white font-bold text-lg">
-                          {initials}
-                        </span>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
-                          {name}
-                        </h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Members • Enrolled
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-black-500 rounded-full"></div>
-                        {/* <span className="text-xs text-gray-400 dark:text-gray-500">Active</span> */}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </CardContent>
-        
-        {students.length > 0 && (
-          <div className="border-t border-gray-100 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-800/50">
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+            aria-label="Close"
+          >
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {students.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
               </svg>
-              <span>Student information is private and secure</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No students enrolled</h3>
+            <p className="text-gray-500 dark:text-gray-400 text-center">
+              When students enroll in this course, they'll appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto custom-scrollbar">
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {students.map((name, index) => {
+                const initials = name
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase())
+                  .join('')
+                  .substring(0, 2);
+                const colors = [
+                  'bg-blue-500',
+                  'bg-green-500',
+                  'bg-purple-500',
+                  'bg-pink-500',
+                  'bg-indigo-500',
+                  'bg-red-500',
+                  'bg-yellow-500',
+                  'bg-teal-500',
+                  'bg-orange-500',
+                  'bg-cyan-500'
+                ];
+                const avatarColor = colors[index % colors.length];
+                return (
+                  <div key={index} className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                    <div className={`w-12 h-12 ${avatarColor} rounded-full flex items-center justify-center flex-shrink-0 shadow-md`}>
+                      <span className="text-white font-bold text-lg">
+                        {initials}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+                        {name}
+                      </h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Members • Enrolled
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-black-500 rounded-full"></div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-      </Card>
-    </div>
+      </CardContent>
+      {students.length > 0 && (
+        <div className="border-t border-gray-100 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Student information is private and secure</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  </div>
 );
 
 export function CommunityChat() {
@@ -322,11 +324,14 @@ export function CommunityChat() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
   const [students, setStudents] = useState<string[]>([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { ref: loadMoreRef, inView } = useInView();
   const processedCommunityIds = useRef<Set<string>>(new Set());
+  const processedMessageIds = useRef<Set<string>>(new Set()); // Track processed message IDs
+  const currentCommunityId = useRef<string | null>(null); // Track current community
 
   const user = useSelector((state: any) => state.user.userDatas);
   const userID = user.id || user._id || "";
@@ -343,10 +348,8 @@ export function CommunityChat() {
       const enrolledCourses = enrolledCoursesData.data.courses;
       console.log("ENROLLED COURSES", enrolledCourses);
 
-      // Clear processed IDs before fetching new communities
       processedCommunityIds.current.clear();
 
-      // Deduplicate communities by course._id
       const newCommunities: Community[] = enrolledCourses.reduce((acc: Community[], course: any) => {
         if (!processedCommunityIds.current.has(course._id)) {
           processedCommunityIds.current.add(course._id);
@@ -381,12 +384,11 @@ export function CommunityChat() {
     }
   }, [user, fetchCommunities]);
 
-  // Sort communities by latest message timestamp
   const sortedCommunities = useMemo(() => {
     return [...communities].sort((a, b) => {
       const aTime = a.latestMessage ? new Date(a.latestMessage.timestamp).getTime() : 0;
       const bTime = b.latestMessage ? new Date(b.latestMessage.timestamp).getTime() : 0;
-      return bTime - aTime; // Newest first
+      return bTime - aTime;
     });
   }, [communities]);
 
@@ -411,6 +413,10 @@ export function CommunityChat() {
     }
   }, [selectedCommunity, fetchStudents]);
 
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   useEffect(() => {
     if (!userID) {
       console.error("No user ID available");
@@ -420,13 +426,16 @@ export function CommunityChat() {
 
     socketRef.current = io(import.meta.env.VITE_AUTH_BASEURL, {
       reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     socketRef.current.on("connect", () => {
       console.log("Socket.IO connected:", socketRef.current?.id);
-      if (selectedCommunity) {
+      if (selectedCommunity && selectedCommunity.id !== currentCommunityId.current) {
         console.log("Emitting join_community after connect:", selectedCommunity.id);
         socketRef.current?.emit("join_community", selectedCommunity.id);
+        currentCommunityId.current = selectedCommunity.id;
         setIsLoadingMessages(true);
       }
     });
@@ -446,6 +455,12 @@ export function CommunityChat() {
     socketRef.current.on("message_history", (history: Message[]) => {
       console.log("Received message history:", history);
       console.log("Message history count:", history.length);
+      processedMessageIds.current.clear(); // Clear processed IDs for new history
+      history.forEach((msg) => {
+        if (msg._id) {
+          processedMessageIds.current.add(msg._id);
+        }
+      });
       setMessages(history);
       if (selectedCommunity) {
         const latestMsg = history.length > 0 ? history[history.length - 1] : null;
@@ -469,18 +484,24 @@ export function CommunityChat() {
         );
       }
       setIsLoadingMessages(false);
+      scrollToBottom();
     });
 
     socketRef.current.on("receive_message", (message: Message) => {
       console.log("Received message:", message);
+      // Skip sender's own message
       if (message.sender === userName) {
         console.log("Skipping sender's own message:", message);
         return;
       }
-      if (message._id && messages.some((msg) => msg._id === message._id)) {
-        console.log("Skipping duplicate message with _id:", message._id);
+      // Check for duplicates using _id or fallback to content+timestamp+sender
+      const messageKey = message._id || `${message.sender}:${message.timestamp}:${message.content}:${message.imageUrl || ''}`;
+      if (processedMessageIds.current.has(messageKey)) {
+        console.log("Skipping duplicate message with key:", messageKey);
         return;
       }
+      processedMessageIds.current.add(messageKey);
+      console.log("Processing new message with key:", messageKey);
 
       setMessages((prev) => [...prev, message]);
       setCommunities((prev) => {
@@ -509,13 +530,8 @@ export function CommunityChat() {
           ...updatedCommunities.slice(communityIndex + 1),
         ];
       });
+      scrollToBottom();
     });
-
-    if (selectedCommunity && socketRef.current?.connected) {
-      console.log("Emitting join_community on selectedCommunity change:", selectedCommunity.id);
-      socketRef.current.emit("join_community", selectedCommunity.id);
-      setIsLoadingMessages(true);
-    }
 
     return () => {
       socketRef.current?.off("connect");
@@ -524,8 +540,9 @@ export function CommunityChat() {
       socketRef.current?.off("message_history");
       socketRef.current?.off("receive_message");
       socketRef.current?.disconnect();
+      currentCommunityId.current = null;
     };
-  }, [selectedCommunity?.id, userID, userName]);
+  }, [selectedCommunity?.id, userID, userName, scrollToBottom]);
 
   const messagesPerPage = 20;
   useEffect(() => {
@@ -538,22 +555,16 @@ export function CommunityChat() {
     }
   }, [inView, messages]);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
-
   const handleSelectCommunity = useCallback((community: Community) => {
     setSelectedCommunity(community);
     setMessages([]);
     setVisibleMessages([]);
+    processedMessageIds.current.clear(); // Clear processed messages for new community
     setIsSidebarOpen(false);
-    if (socketRef.current?.connected) {
+    if (socketRef.current?.connected && community.id !== currentCommunityId.current) {
       console.log("Emitting join_community on community select:", community.id);
       socketRef.current.emit("join_community", community.id);
+      currentCommunityId.current = community.id;
       setIsLoadingMessages(true);
     }
     setCommunities((prev) =>
@@ -619,7 +630,9 @@ export function CommunityChat() {
       senderId: userID,
     });
     setNewMessage("");
-  }, [newMessage, userID, userName, selectedCommunity]);
+    setShowEmojiPicker(false);
+    scrollToBottom();
+  }, [newMessage, userID, userName, selectedCommunity, scrollToBottom]);
 
   const handleImageUpload = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -694,11 +707,12 @@ export function CommunityChat() {
             message: { ...newMsg, content: "Sent an image" },
             senderId: userID,
           });
+          scrollToBottom();
         };
         reader.readAsDataURL(file);
         event.target.value = "";
       } else {
-        console.error("Missing required data for image upload:", {
+        console.error("Error uploading image: Missing required data", {
           userID,
           selectedCommunity,
           userName,
@@ -708,7 +722,7 @@ export function CommunityChat() {
         );
       }
     },
-    [userID, selectedCommunity, userName]
+    [userID, selectedCommunity, userName, scrollToBottom]
   );
 
   const formatTimestamp = useCallback((timestamp: string) => {
@@ -925,19 +939,43 @@ export function CommunityChat() {
                       onChange={handleImageUpload}
                       className="hidden"
                     />
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                      placeholder="Type your message..."
-                      className={cn(
-                        "flex-1 px-4 py-3 rounded-full",
-                        "bg-indigo-50 border border-indigo-200",
-                        "focus:ring-2 focus:ring-indigo-500 focus:outline-none",
-                        "placeholder-gray-400 text-gray-800 transition-all duration-200"
+                    <div className="relative flex-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className={cn(
+                          "absolute left-2 top-1/2 -translate-y-1/2 p-2",
+                          "text-indigo-700 hover:text-indigo-900",
+                          "transition-all duration-200"
+                        )}
+                        aria-label="Select emoji"
+                      >
+                        <Smile className="h-5 w-5" />
+                      </button>
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-16 left-0 z-10">
+                          <EmojiPicker
+                            onEmojiClick={(emojiData: EmojiClickData) => {
+                              setNewMessage((prev) => prev + emojiData.emoji);
+                              setShowEmojiPicker(false);
+                            }}
+                          />
+                        </div>
                       )}
-                    />
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                        placeholder="Type your message..."
+                        className={cn(
+                          "w-full pl-12 pr-4 py-3 rounded-full",
+                          "bg-indigo-50 border border-indigo-200",
+                          "focus:ring-2 focus:ring-indigo-500 focus:outline-none",
+                          "placeholder-gray-400 text-gray-800 transition-all duration-200"
+                        )}
+                      />
+                    </div>
                     <button
                       onClick={handleSendMessage}
                       className={cn(

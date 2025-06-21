@@ -1,5 +1,7 @@
 import { Response } from "express";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const setAuthCookies = (
   res: Response,
   accessToken: string,
@@ -7,18 +9,20 @@ export const setAuthCookies = (
   accessTokenName: string,
   refreshTokenName: string
 ) => {
-  const isProduction = process.env.NODE_ENV === "production";
- 
   res.cookie(accessTokenName, accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "strict",
+    sameSite: isProduction ? "none" : "lax", // adjust for dev vs prod
+    path: "/",
+    maxAge: 1 * 60 * 1000, 
   });
 
   res.cookie(refreshTokenName, refreshToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "strict",
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 
@@ -27,12 +31,12 @@ export const updateCookieWithAccessToken = (
   accessToken: string,
   accessTokenName: string
 ) => {
-  const isProduction = process.env.NODE_ENV === "production";
-
   res.cookie(accessTokenName, accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "strict",
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    maxAge: 1 * 60 * 1000, // 15 minutes
   });
 };
 
@@ -41,6 +45,6 @@ export const clearAuthCookies = (
   accessTokenName: string,
   refreshTokenName: string
 ) => {
-  res.clearCookie(accessTokenName);
-  res.clearCookie(refreshTokenName);
+  res.clearCookie(accessTokenName, { path: "/" });
+  res.clearCookie(refreshTokenName, { path: "/" });
 };

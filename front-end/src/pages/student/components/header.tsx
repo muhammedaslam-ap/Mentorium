@@ -153,7 +153,7 @@ const Header: React.FC = () => {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state?.user?.userDatas);
+  const user = useSelector((state: any) => state?.user?.userDatas);
   const socketRef = useRef<Socket | null>(null);
   const { ref: loadMoreRef, inView } = useInView();
 

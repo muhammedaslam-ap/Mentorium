@@ -70,4 +70,23 @@ export class TransactionController {
       });
     }
   }
+
+  async getAdminWalletData(req: Request, res: Response) {
+    try {
+      const data = await this._transactionService.AdminWalletData();
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        data,
+      });
+    } catch (error) {
+      console.error("Error in getAdminWalletData:", error);
+
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
+    }
+  }
 }

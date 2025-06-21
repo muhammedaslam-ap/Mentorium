@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Menu, Check, CheckCheck, Image, MessageSquare } from "lucide-react";
+import { Send, Menu, Check, CheckCheck, Image, MessageSquare, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
@@ -8,7 +8,8 @@ import SideBar from "../components/sideBar";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useSelector } from "react-redux";
 import { profileService } from "@/services/userServices/profileService";
-import { RootState } from "@/redux/store";
+// import { RootState } from "@/redux/store";
+import Picker from "emoji-picker-react"; // Import emoji picker
 
 interface Chat {
   privateChatId: string;
@@ -51,8 +52,9 @@ export function MessagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const processedMessageIds = useRef<Set<string>>(new Set()); // Track processed messages
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State for emoji picker visibility
 
-  const { tutorId, tutorName } = useSelector((state: RootState) => ({
+  const { tutorId, tutorName } = useSelector((state: any) => ({
     tutorId: state.tutor.tutorDatas?.id || null,
     tutorName: state.tutor.tutorDatas?.username || "Unknown",
   }));
@@ -520,6 +522,11 @@ export function MessagesPage() {
     }
   };
 
+  const handleEmojiClick = (emojiData: any) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false); // Optionally hide picker after selection
+  };
+
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString("en-US", {
       hour: "numeric",
@@ -609,6 +616,11 @@ export function MessagesPage() {
                           )}
                         </div>
                         <p className="text-sm text-slate-600 mt-1">{chat.courseTitle}</p>
+                        {chat.latestMessage && (
+                          <p className="text-xs text-slate-500 mt-1 truncate">
+                            {chat.latestMessage.content || "Image"}
+                          </p>
+                        )}
                         <div className="flex items-center mt-2 text-xs text-slate-400">
                           <span>Private Chat</span>
                           <span className="mx-2">•</span>
@@ -744,6 +756,23 @@ export function MessagesPage() {
                               "placeholder-gray-400 text-gray-800 transition-all duration-200"
                             )}
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                            className={cn(
+                              "p-3 rounded-full",
+                              "bg-gray-200 text-gray-600",
+                              "hover:bg-gray-300",
+                              "transition-all duration-200"
+                            )}
+                          >
+                            <Smile className="h-5 w-5" />
+                          </button>
+                          {showEmojiPicker && (
+                            <div className="absolute bottom-20 right-6 z-50">
+                              <Picker onEmojiClick={handleEmojiClick} />
+                            </div>
+                          )}
                           <button
                             onClick={handleSendMessage}
                             className={cn(

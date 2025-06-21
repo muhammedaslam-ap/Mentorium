@@ -1,4 +1,4 @@
-import { TNotification } from "../../types/notification";
+import  TNotification  from "../../types/notification";
 import { TTutorModel, TTutorProfileInput, TutorProfileWithCourses } from "../../types/tutor";
 
 export interface ITutorService {

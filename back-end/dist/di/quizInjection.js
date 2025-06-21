@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.injectedQuizController = void 0;
+const quizRepository_1 = require("../repositories/quizRepository");
+const quizServices_1 = require("../services/quizServices");
+const quizController_1 = require("../controller/quizController");
+const QuizRepository = new quizRepository_1.quizRepository();
+const QuizService = new quizServices_1.quizService(QuizRepository);
+const quizController = new quizController_1.QuizController(QuizService);
+exports.injectedQuizController = quizController;

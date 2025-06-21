@@ -12,6 +12,7 @@ import { TransactionModel } from '../models/transactionModel';
 import { ICourseService } from '../interfaces/serviceInterface/IcourseServices';
 import { CourseService } from '../services/courseServices';
 import { CourseRepository } from '../repositories/courseRepository';
+import { courseModel } from '../models/course';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
@@ -167,7 +168,13 @@ export class PaymentRoutes {
 
           // Get the purchase document's _id
           const purchaseId = purchase._id;
+          
+          const courseID = await courseModel.findById(courseId);
+            if (!courseID || !courseID.title) {
+              throw new CustomError('Tutor not found for this course', HTTP_STATUS.NOT_FOUND);
+            }
 
+          
           // Fetch course to get tutorId
           const course = await this._courseService.getCourseDetails(courseId);
           if (!course || !course.tutorId) {
@@ -196,7 +203,7 @@ export class PaymentRoutes {
             purchase_id: purchaseId,
             transaction_type: 'credit',
             amount: amount,
-            description: `Payment for course purchase (Course ID: ${courseId})`,
+            description: `Payment for course purchase (Course ID: ${courseID.title})`,
           });
           await tutorTransaction.save({ session });
 

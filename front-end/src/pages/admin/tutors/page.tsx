@@ -1,10 +1,4 @@
-"use client"
-
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom";
-import { BarChart3, Users, GraduationCap, LogOut, Menu, Search, CheckCircle, XCircle, Ban } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,11 +12,9 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { adminService } from "@/services/adminServices/adminAuthService"
 import { tutorService } from "@/services/adminServices/tutorService"
-import { useNavigate } from "react-router-dom";
-
-import { toast } from "sonner"
+import { Search, CheckCircle, XCircle, Ban } from "lucide-react"
+import { AdminLayout } from "../componets/adminLayout"
 
 interface Tutor {
   _id: string
@@ -40,8 +32,6 @@ interface PaginationInfo {
 }
 
 export default function TutorsManagement() {
-  const router = useNavigate()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -79,7 +69,7 @@ export default function TutorsManagement() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    setPagination((prev) => ({ ...prev, currentPage: 1 })) // Reset to first page on new search
+    setPagination((prev) => ({ ...prev, currentPage: 1 }))
     fetchTutors()
   }
 
@@ -89,22 +79,9 @@ export default function TutorsManagement() {
     }
   }
 
-  const handleLogout = async () => {
-    try {
-      await adminService.logoutAdmin()
-      toast.success("Logged out successfully")
-      router("/admin/login")
-    } catch (error) {
-        console.log(error);
-        
-      toast.error("Failed to logout")
-    }
-  }
-
   const handleBlockTutor = async (tutorId: string, currentBlockedStatus: boolean) => {
     try {
       await tutorService.blockTutor(tutorId, !currentBlockedStatus)
-      // Update the local state to reflect the change
       setTutors(tutors.map((tutor) => (tutor._id === tutorId ? { ...tutor, isBlocked: !currentBlockedStatus } : tutor)))
     } catch (error) {
       console.error("Failed to update tutor status:", error)
@@ -114,8 +91,7 @@ export default function TutorsManagement() {
   const handleApproveTutor = async (tutorId: string) => {
     try {
       await tutorService.tutorApproval(tutorId)
-      // Update the local state to reflect the change
-      setTutors(tutors.map((tutor) => (tutor._id === tutorId ? { ...tutor, isAccepted: true } : tutor)))
+      setTutors(tutors.map((tutor) => (tutor._id === tutorId ? { ...tutor, approvalStatus: 'approved' } : tutor)))
     } catch (error) {
       console.error("Failed to approve tutor:", error)
     }
@@ -129,14 +105,12 @@ export default function TutorsManagement() {
 
   const handleRejectTutor = async () => {
     if (!selectedTutorId || !rejectionReason.trim()) {
-      toast.error("Please provide a reason for rejection")
       return
     }
 
     try {
       await tutorService.tutorReject(selectedTutorId, rejectionReason)
-      // Update the local state to reflect the change
-      setTutors(tutors.map((tutor) => (tutor._id === selectedTutorId ? { ...tutor, isAccepted: false } : tutor)))
+      setTutors(tutors.map((tutor) => (tutor._id === selectedTutorId ? { ...tutor, approvalStatus: 'rejected' } : tutor)))
       setIsRejectDialogOpen(false)
     } catch (error) {
       console.error("Failed to reject tutor:", error)
@@ -144,169 +118,94 @@ export default function TutorsManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-violet-50">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-violet-100 bg-white shadow-sm">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden text-violet-600"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 flex items-center justify-center">
-                <BarChart3 className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-violet-700 to-purple-700 bg-clip-text text-transparent">
-                Admin Portal
-              </span>
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 text-rose-500 hover:bg-rose-50 hover:text-rose-700"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden md:inline">Logout</span>
-          </Button>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-violet-900">Tutor Management</h1>
+          <p className="text-violet-600">View and manage all tutors</p>
         </div>
-      </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`${
-            isSidebarOpen ? "block" : "hidden"
-          } fixed inset-y-0 left-0 top-16 z-30 w-64 shrink-0 border-r border-violet-100 bg-gradient-to-b from-violet-50 to-white pt-4 md:block shadow-sm`}
-        >
-          <div className="flex h-full flex-col">
-            <div className="px-4 py-2">
-              <h2 className="text-sm font-semibold text-violet-800">MENU</h2>
-            </div>
-            <nav className="mt-2 grid gap-1 px-2">
-              <Link to="/admin/dashboard">
-                <Button variant="ghost" className="w-full justify-start hover:bg-violet-100 hover:text-violet-700">
-                  <BarChart3 className="mr-2 h-4 w-4 text-violet-600" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Link to="/admin/tutors">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700"
-                >
-                  <GraduationCap className="mr-2 h-4 w-4" />
-                  Tutors
-                </Button>
-              </Link>
-              <Link to="/admin/students">
-                <Button variant="ghost" className="w-full justify-start hover:bg-violet-100 hover:text-violet-700">
-                  <Users className="mr-2 h-4 w-4 text-violet-600" />
-                  Students
-                </Button>
-              </Link>
-            </nav>
+        {/* Search and Filters */}
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
+            <Input
+              type="search"
+              placeholder="Search tutors..."
+              className="border-violet-200"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Button type="submit" className="bg-violet-600 hover:bg-violet-700">
+              <Search className="h-4 w-4" />
+            </Button>
+          </form>
+          <div className="flex items-center gap-2">
+            <select
+              className="rounded-md border border-violet-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
           </div>
-        </aside>
+        </div>
 
-        {/* Main Content */}
-        <main className={`flex-1 ${isSidebarOpen ? "md:ml-64" : ""} p-4 md:p-8`}>
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-violet-900">Tutor Management</h1>
-            <p className="text-violet-600">View and manage all tutors</p>
-          </div>
-
-          {/* Search and Filters */}
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
-              <Input
-                type="search"
-                placeholder="Search tutors..."
-                className="border-violet-200"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button type="submit" className="bg-violet-600 hover:bg-violet-700">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
-            <div className="flex items-center gap-2">
-              <select
-                className="rounded-md border border-violet-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                value={rowsPerPage}
-                onChange={(e) => setRowsPerPage(Number(e.target.value))}
-              >
-                <option value={5}>5 per page</option>
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Tutors Table */}
-          <div className="rounded-lg border border-violet-100 bg-white shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gradient-to-r from-violet-50 to-purple-50">
-                  <TableHead className="text-violet-900">Name</TableHead>
-                  <TableHead className="text-violet-900">Email</TableHead>
-                  <TableHead className="text-violet-900">Status</TableHead>
-                  {/* <TableHead className="text-violet-900">Joined</TableHead> */}
-                  <TableHead className="text-violet-900">Approve/Reject</TableHead>
-                  <TableHead className="text-violet-900">Actions</TableHead>
+        {/* Tutors Table */}
+        <div className="rounded-lg border border-violet-100 bg-white shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gradient-to-r from-violet-50 to-purple-50">
+                <TableHead className="text-violet-900">Name</TableHead>
+                <TableHead className="text-violet-900">Email</TableHead>
+                <TableHead className="text-violet-900">Status</TableHead>
+                <TableHead className="text-violet-900">Approve/Reject</TableHead>
+                <TableHead className="text-violet-900">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    <div className="flex justify-center">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600"></div>
+                    </div>
+                    <p className="mt-2 text-violet-600">Loading tutors...</p>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <div className="flex justify-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600"></div>
-                      </div>
-                      <p className="mt-2 text-violet-600">Loading tutors...</p>
+              ) : tutors.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-violet-600">
+                    No tutors found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tutors.map((tutor) => (
+                  <TableRow key={tutor._id} className="hover:bg-violet-50">
+                    <TableCell className="font-medium text-violet-900">{tutor.name}</TableCell>
+                    <TableCell className="text-violet-700">{tutor.email}</TableCell>
+                    <TableCell>
+                      {tutor.isBlocked ? (
+                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
+                          Blocked
+                        </Badge>
+                      ) : tutor.approvalStatus === 'approved' ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
+                          Approved
+                        </Badge>
+                      ) : tutor.approvalStatus === 'rejected' ? (
+                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
+                          Rejected
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+                          Pending
+                        </Badge>
+                      )}
                     </TableCell>
-                  </TableRow>
-                ) : tutors.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-violet-600">
-                      No tutors found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  tutors.map((tutor) => (
-                    <TableRow key={tutor._id} className="hover:bg-violet-50">
-                      <TableCell className="font-medium text-violet-900">{tutor.name}</TableCell>
-                      <TableCell className="text-violet-700">{tutor.email}</TableCell>
-                      <TableCell>
-                        {tutor.isBlocked ? (
-                          <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
-                            Blocked
-                          </Badge>
-                        ) : tutor.approvalStatus === 'approved' ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                            Approved
-                          </Badge>
-                        ) : tutor.approvalStatus === 'rejected' ? (
-                          <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
-                            Rejected
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                            Pending
-                          </Badge>
-                        )}
-                      </TableCell>
-                      {/* <TableCell className="text-violet-600">
-                        {new Date(tutor.createdAt).toLocaleDateString()}
-                      </TableCell> */}
-                      <TableCell>
+                    <TableCell>
                       <div className="flex space-x-2">
                         {tutor.approvalStatus === 'pending' && (
                           <>
@@ -332,7 +231,6 @@ export default function TutorsManagement() {
                         )}
                       </div>
                     </TableCell>
-
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
@@ -359,43 +257,42 @@ export default function TutorsManagement() {
                         </Button>
                       </div>
                     </TableCell>
-                   </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between border-t border-violet-100 bg-gradient-to-r from-violet-50 to-purple-50 px-4 py-3">
-              <div className="text-sm text-violet-600">
-                Showing {tutors.length} of {pagination.totalTutors} tutors
+          {/* Pagination */}
+          <div className="flex items-center justify-between border-t border-violet-100 bg-gradient-to-r from-violet-50 to-purple-50 px-4 py-3">
+            <div className="text-sm text-violet-600">
+              Showing {tutors.length} of {pagination.totalTutors} tutors
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+                className="border-violet-200 text-violet-700 hover:bg-violet-100"
+              >
+                Previous
+              </Button>
+              <div className="flex h-8 items-center justify-center rounded-md border border-violet-200 bg-white px-3 text-sm">
+                Page {pagination.currentPage} of {pagination.totalPages}
               </div>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  disabled={pagination.currentPage === 1}
-                  className="border-violet-200 text-violet-700 hover:bg-violet-100"
-                >
-                  Previous
-                </Button>
-                <div className="flex h-8 items-center justify-center rounded-md border border-violet-200 bg-white px-3 text-sm">
-                  Page {pagination.currentPage} of {pagination.totalPages}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={pagination.currentPage === pagination.totalPages}
-                  className="border-violet-200 text-violet-700 hover:bg-violet-100"
-                >
-                  Next
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className="border-violet-200 text-violet-700 hover:bg-violet-100"
+              >
+                Next
+              </Button>
             </div>
           </div>
-        </main>
+        </div>
       </div>
 
       {/* Rejection Dialog */}
@@ -432,6 +329,6 @@ export default function TutorsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminLayout>
   )
 }

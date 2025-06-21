@@ -93,7 +93,7 @@ interface Review {
     _id: string;
     name: string;
   };
-  courseId: string;
+  course_id: string;
   rating: number;
   comment: string;
   createdAt: string;
@@ -463,10 +463,6 @@ const SidebarCard = ({
   navigate,
   courseId,
   completedLessons,
-  handleChatWithInstructor,
-  loadingChat,
-  handleStartCall,
-  loadingCall,
 }: {
   course: Course;
   isEnrolled: boolean;
@@ -480,10 +476,6 @@ const SidebarCard = ({
   navigate: (path: string) => void;
   courseId: string;
   completedLessons: string[];
-  handleChatWithInstructor: () => void;
-  loadingChat: boolean;
-  handleStartCall: () => void;
-  loadingCall: boolean;
 }) => {
   const isCourseCompleted = lessons.length > 0 && lessons.every((lesson) => completedLessons.includes(lesson._id));
 
@@ -553,34 +545,6 @@ const SidebarCard = ({
                 Continue Learning
               </Button>
             )}
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/20"
-              onClick={handleChatWithInstructor}
-              disabled={loadingChat}
-            >
-              {loadingChat ? (
-                <Loader className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <MessageSquare className="mr-2 h-5 w-5" />
-              )}
-              Chat with Instructor
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
-              onClick={handleStartCall}
-              disabled={loadingCall}
-            >
-              {loadingCall ? (
-                <Loader className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <Video className="mr-2 h-5 w-5" />
-              )}
-              Call Tutor
-            </Button>
           </div>
         ) : (
           <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={handleEnrollNow}>
@@ -666,6 +630,72 @@ const ReviewItem = ({
     </div>
   </div>
 );
+
+const ReviewForm = ({
+  newReview,
+  setNewReview,
+  handleSubmitReview,
+  submittingReview,
+  hasReviewed,
+}: {
+  newReview: { rating: number; comment: string };
+  setNewReview: React.Dispatch<React.SetStateAction<{ rating: number; comment: string }>>;
+  handleSubmitReview: () => void;
+  submittingReview: boolean;
+  hasReviewed: boolean;
+}) => {
+  if (hasReviewed) return null;
+
+  return (
+    <Card className="bg-gray-50 dark:bg-gray-800/50">
+      <CardContent className="p-6 space-y-4">
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Submit Your Review</h4>
+        <div className="flex items-center gap-2">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => setNewReview((prev) => ({ ...prev, rating: star }))}
+              className="focus:outline-none"
+            >
+              <Star
+                className={`h-6 w-6 ${
+                  star <= newReview.rating
+                    ? "fill-yellow-400 text-yellow-400"
+                    : "text-gray-300 dark:text-gray-600"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+        <div>
+          <Label htmlFor="review-comment" className="text-gray-700 dark:text-gray-300">
+            Your Feedback
+          </Label>
+          <Textarea
+            id="review-comment"
+            value={newReview.comment}
+            onChange={(e) => setNewReview((prev) => ({ ...prev, comment: e.target.value }))}
+            placeholder="Share your thoughts about the course..."
+            className="mt-2"
+            rows={4}
+          />
+        </div>
+        <Button
+          onClick={handleSubmitReview}
+          disabled={submittingReview}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          {submittingReview ? (
+            <Loader className="mr-2 h-5 w-5 animate-spin" />
+          ) : (
+            <Star className="mr-2 h-5 w-5" />
+          )}
+          Submit Review
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
 
 const CourseDetails = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -991,6 +1021,7 @@ const CourseDetails = () => {
     try {
       const response = await authAxiosInstance.get(`/reviews/${courseId}`);
       setReviews(response.data.reviews || []);
+      console.log("reviviivivi",response.data.reviews)
     } catch (error: any) {
       console.error("Error fetching reviews:", error);
       toast.error("Failed to load reviews");
@@ -1017,17 +1048,10 @@ const CourseDetails = () => {
       return;
     }
 
-    // Check for existing review by the same user for this course
-    const userReview = reviews.find((review) => review.user._id === studentId && review.courseId === courseId);
-    if (userReview) {
-      toast.error("You have already submitted a review for this course");
-      return;
-    }
-
     setSubmittingReview(true);
     try {
       await authAxiosInstance.post(`/reviews/${courseId}/add`, {
-        courseId, 
+        courseId,
         userId: studentId,
         rating: newReview.rating,
         comment: newReview.comment,
@@ -1042,7 +1066,12 @@ const CourseDetails = () => {
     } finally {
       setSubmittingReview(false);
     }
-  }, [courseId, studentId, newReview, reviews, fetchReviews, fetchCourseDetails]);
+  }, [courseId, studentId, newReview, fetchReviews, fetchCourseDetails]);
+
+  const hasReviewed = useMemo(() => {
+    if (!studentId || !reviews || reviews.length === 0) return false;
+    return reviews.some((review) => review.user._id === studentId && review.course_id === courseId);
+  }, [studentId, reviews, courseId]);
 
   const memoizedCourse = useMemo(() => course, [course]);
   const memoizedLessons = useMemo(() => lessons, [lessons]);
@@ -1123,7 +1152,7 @@ const CourseDetails = () => {
       <div className="min-h-screen bg-white dark:bg-gray-900">
         <Header />
         <div className="container mx-auto max-w-7xl px-4 py-8">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="space-y-4">
                 <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 animate-pulse"></div>
@@ -1179,7 +1208,7 @@ const CourseDetails = () => {
           Back to Courses
         </Button>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
             <CourseInfo
               course={memoizedCourse}
@@ -1387,54 +1416,13 @@ const CourseDetails = () => {
                   <CardContent className="p-8 space-y-8">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Student Reviews</h3>
 
-                    {/* Review form always visible for testing */}
-                    <Card className="bg-gray-50 dark:bg-gray-800/50">
-                      <CardContent className="p-6 space-y-4">
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Submit Your Review</h4>
-                        <div className="flex items-center gap-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              onClick={() => setNewReview((prev) => ({ ...prev, rating: star }))}
-                              className="focus:outline-none"
-                            >
-                              <Star
-                                className={`h-6 w-6 ${
-                                  star <= newReview.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300 dark:text-gray-600"
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                        <div>
-                          <Label htmlFor="review-comment" className="text-gray-700 dark:text-gray-300">
-                            Your Feedback
-                          </Label>
-                          <Textarea
-                            id="review-comment"
-                            value={newReview.comment}
-                            onChange={(e) => setNewReview((prev) => ({ ...prev, comment: e.target.value }))}
-                            placeholder="Share your thoughts about the course..."
-                            className="mt-2"
-                            rows={4}
-                          />
-                        </div>
-                        <Button
-                          onClick={handleSubmitReview}
-                          disabled={submittingReview}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          {submittingReview ? (
-                            <Loader className="mr-2 h-5 w-5 animate-spin" />
-                          ) : (
-                            <Star className="mr-2 h-5 w-5" />
-                          )}
-                          Submit Review
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    <ReviewForm
+                      newReview={newReview}
+                      setNewReview={setNewReview}
+                      handleSubmitReview={handleSubmitReview}
+                      submittingReview={submittingReview}
+                      hasReviewed={hasReviewed}
+                    />
 
                     {loadingReviews ? (
                       <div className="space-y-4">
@@ -1553,10 +1541,6 @@ const CourseDetails = () => {
                   navigate={navigate}
                   courseId={courseId!}
                   completedLessons={completedLessons}
-                  handleChatWithInstructor={handleChatWithInstructor}
-                  loadingChat={loadingChat}
-                  handleStartCall={handleStartCall}
-                  loadingCall={loadingCall}
                 />
               )}
             </div>

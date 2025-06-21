@@ -130,73 +130,94 @@ const WalletPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await authAxiosInstance.get("/wallet/wallet");
-      console.log("Wallet data:", JSON.stringify(response.data, null, 2));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      // Sanitize incoming data
-      const sanitizedData: WalletData = {
-        balance: Number(response.data.wallet.balance) || 0,
-        currency: response.data.currency || "INR",
-        lastUpdated: response.data.wallet.lastUpdated || new Date().toISOString(),
-        transactions: response.data.wallet.transactions?.map((tx: Transaction) => ({
-          ...tx,
-          amount: Number(tx.amount) || 0,
-          createdAt: tx.createdAt || new Date().toISOString(),
-        })) || [],
-      };
+      // Fetch wallet balance and walletId
+      let balance = 0;
+      let walletId = "";
+      let currency = "INR";
+      let lastUpdated = new Date().toISOString();
+      try {
+        console.log("Fetching /wallet/wallet");
+        const walletResponse = await authAxiosInstance.get("/wallet/wallet", {
+          signal: controller.signal,
+        });
+        console.log("Wallet Response:", JSON.stringify(walletResponse.data, null, 2));
 
-      setWalletData(sanitizedData);
+        if (walletResponse.data?.wallet) {
+          balance = Number(walletResponse.data.wallet.balance) || 0;
+          walletId = walletResponse.data.wallet._id || "";
+          currency = walletResponse.data.currency || "INR";
+          lastUpdated = walletResponse.data.wallet.lastUpdated || new Date().toISOString();
+        }
+      } catch (walletError: any) {
+        console.error("Error fetching /wallet/wallet:", {
+          message: walletError.message,
+          status: walletError.response?.status,
+          data: walletError.response?.data,
+        });
+        toast.error("Failed to load wallet data");
+      }
+
+      // Fetch transactions
+      let transactions: Transaction[] = [];
+      if (walletId) {
+        try {
+          console.log("Fetching /transaction/transaction-details with walletId:", walletId);
+          const transactionResponse = await authAxiosInstance.get("/transaction/transaction-details", {
+            params: {
+              walletId,
+              page: 1,
+              limit: 10, // Adjust limit as needed
+            },
+            signal: controller.signal,
+          });
+          console.log("Transaction Response:", JSON.stringify(transactionResponse.data, null, 2));
+
+          if (transactionResponse.data?.success) {
+            transactions = transactionResponse.data.transactions.map((tx: any) => ({
+              _id: tx.transactionId,
+              amount: Number(tx.amount) || 0,
+              type: tx.transaction_type,
+              description: tx.description,
+              courseTitle: tx.description.match(/\(Course ID:\s*(.+?)\)/)?.[1] || "N/A",
+              studentName: tx.purchase_id.userId.name,
+              createdAt: tx.transaction_date || new Date().toISOString(),
+              status: "completed",
+            })) || [];
+          }
+        } catch (transactionError: any) {
+          console.error("Error fetching /transaction/transaction-details:", {
+            message: transactionError.message,
+            status: transactionError.response?.status,
+            data: transactionError.response?.data,
+          });
+          toast.error("Failed to load transaction history");
+        }
+      } else {
+        console.warn("No walletId available to fetch transactions");
+      }
+
+      // Set sanitized wallet data
+      setWalletData({
+        balance,
+        currency,
+        lastUpdated,
+        transactions,
+      });
+
+      clearTimeout(timeoutId);
     } catch (error: any) {
       console.error("Error fetching wallet data:", error);
-      setError(error.response?.data?.message || "Failed to load wallet data");
-      toast.error("Failed to load wallet data");
-
-      // Mock data as fallback
-      setWalletData({
-        balance: 24500.75,
-        currency: "INR",
-        lastUpdated: new Date().toISOString(),
-        transactions: [
-          {
-            _id: "t1",
-            amount: 1500.0,
-            type: "credit",
-            description: "Course purchase",
-            courseTitle: "Advanced JavaScript Patterns",
-            studentName: "Rahul Sharma",
-            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            status: "completed",
-          },
-          {
-            _id: "t2",
-            amount: 2000.0,
-            type: "credit",
-            description: "Course purchase",
-            courseTitle: "React Performance Optimization",
-            studentName: "Priya Patel",
-            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            status: "completed",
-          },
-          {
-            _id: "t3",
-            amount: 1200.0,
-            type: "pending",
-            description: "Course purchase (processing)",
-            courseTitle: "Node.js Microservices",
-            studentName: "Amit Kumar",
-            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            status: "pending",
-          },
-          {
-            _id: "t4",
-            amount: 500.0,
-            type: "debit",
-            description: "Platform fee",
-            createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-            status: "completed",
-          },
-        ],
-      });
+      let errorMessage = "Failed to load wallet data";
+      if (error.name === "AbortError") {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (error.response) {
+        errorMessage = `Server error: ${error.response.status} ${error.response.data?.message || ""}`;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

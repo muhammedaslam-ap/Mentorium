@@ -7,6 +7,8 @@ import { HTTP_STATUS } from '../shared/constant';
 import { courseModel } from '../models/course';
 import { userModel } from '../models/userModel';
 import { WalletModel } from '../models/walletModel';
+ import { AdminWalletModel } from '../models/adminWallet'; // <-- adjust path as needed
+
 
 interface PurchaseDetails {
   courseId: string;
@@ -30,39 +32,8 @@ export class PaymentService {
     });
   }
 
-  async createPaymentIntent(
-    amount: number,
-    currency: string,
-    courseId: string,
-    userId: string
-  ): Promise<Stripe.Response<Stripe.PaymentIntent>> {
-    console.log("Creating PaymentIntent", { amount, currency, courseId, userId });
 
-    if (!isValidObjectId(courseId) || !isValidObjectId(userId)) {
-      console.error("Validation error: Invalid courseId or userId", { courseId, userId });
-      throw new CustomError('Invalid courseId or userId', HTTP_STATUS.BAD_REQUEST);
-    }
-
-    try {
-      const paymentIntent = await this.stripe.paymentIntents.create({
-        amount, 
-        currency,
-        metadata: { courseId, userId },
-        description: `Course purchase: ${courseId} by user ${userId}`,
-      });
-
-      console.log("PaymentIntent created successfully", paymentIntent);
-      return paymentIntent;
-    } catch (error) {
-      console.error("Error creating PaymentIntent:", error);
-      throw new CustomError(
-        'Failed to create PaymentIntent',
-        HTTP_STATUS.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  async createStripePayment(
+async createStripePayment(
   paymentIntentId: string,
   amount: number,
   currency: string,
@@ -75,16 +46,44 @@ export class PaymentService {
   }
 
   try {
-    const tutor = await courseModel.findById(courseId);
-    if (!tutor || !tutor.tutorId) {
+    const course = await courseModel.findById(courseId);
+    if (!course || !course.tutorId) {
       throw new CustomError('Tutor not found for this course', HTTP_STATUS.NOT_FOUND);
     }
 
+
+    const tutor = await userModel.findById(course.tutorId);
+    if (!tutor) {
+      throw new CustomError('Tutor user not found', HTTP_STATUS.NOT_FOUND);
+    }
+
+    const tutorName = `${tutor.name}`; 
+    const courseName = course.title || "Untitled Course"; 
+
+    const tutorShare = amount * 0.9;
+    const adminShare = amount * 0.1;
+
     await WalletModel.findOneAndUpdate(
-      { userId: tutor.tutorId },
-      { $inc: { balance: amount } },
+      { userId: course.tutorId },
+      { $inc: { balance: tutorShare } },
       { upsert: true, new: true }
     );
+
+    const adminWallet = await AdminWalletModel.getWallet();
+    const transactionId = `txn_${Date.now()}`;
+
+    adminWallet.balance += adminShare;
+      adminWallet.transactions.push({
+      transactionId,
+      purchase_id: new mongoose.Types.ObjectId(), 
+      transaction_type: "credit",
+      amount: adminShare,
+      description: `10% commission from course "${courseName}" by tutor ${tutorName}`,
+      transaction_date: new Date(),
+    });
+
+
+    await adminWallet.save();
 
     const existingPurchase = await purchaseModel.findOne({
       userId,
@@ -122,6 +121,7 @@ export class PaymentService {
     );
   }
 }
+
 
 
   async updateStripePayment(

@@ -1,4 +1,3 @@
- 
 import { JwtPayload } from "jsonwebtoken";
 import { IRefreshTokenService } from "../interfaces/serviceInterface/refreshTokenService";
 import { ITokenService } from "../interfaces/jwtTokenInterface";
@@ -12,20 +11,34 @@ export class RefreshTokenService implements IRefreshTokenService {
     role: string;
     accessToken: string;
   } {
-    console.log('refresh token inside refrsh tokcen service', refreshToken)
+    console.log('refresh token inside refreshToken service', refreshToken);
     const payload = this._tokenService.verifyRefreshtoken(refreshToken);
     if (!payload)
       throw new CustomError("Invalid refresh token", HTTP_STATUS.BAD_REQUEST);
 
     return {
       role: (payload as JwtPayload).role,
-      accessToken: this._tokenService.generateAccessToken({
-        id: (payload as JwtPayload).id,
-        email: (payload as JwtPayload).email,
-        role: (payload as JwtPayload).role,
-      }),
+      accessToken: this.generateAccessToken(payload as JwtPayload),
     };
   }
-}
 
-  
+  verify(refreshToken: string, expectedRole: string): JwtPayload | null {
+    const payload = this._tokenService.verifyRefreshtoken(refreshToken);
+    if (
+      payload &&
+      (payload as JwtPayload).role &&
+      (payload as JwtPayload).role === expectedRole
+    ) {
+      return payload as JwtPayload;
+    }
+    return null;
+  }
+
+  generateAccessToken(payload: JwtPayload): string {
+    return this._tokenService.generateAccessToken({
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+    });
+  }
+}

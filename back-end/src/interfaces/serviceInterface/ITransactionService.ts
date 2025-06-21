@@ -1,5 +1,5 @@
 import { AdminDashboardData } from "../../types/adminDashBoard";
-import { TTransaction } from "../../types/transation";
+import { TTransaction, TTransactionAdmin } from "../../types/transation";
 
 export interface ITransactionService {
   transactionDetails(
@@ -16,4 +16,6 @@ export interface ITransactionService {
     totalTransaction: number;
   }>;
    fetchDashboardStats(): Promise<AdminDashboardData> 
+     AdminWalletData(): Promise<TTransactionAdmin>;
+
 }

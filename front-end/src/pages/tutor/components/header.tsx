@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
 import { io, Socket } from "socket.io-client";
 import { cn } from "@/lib/utils";
-import { RootState } from "@/redux/store";
+// import { RootState } from "@/redux/store";
 
 interface Notification {
   _id: string;
@@ -42,7 +42,7 @@ interface TutorState {
 export function Header() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-    const user = useSelector((state: RootState) => state?.tutor?.tutorDatas);
+    const user = useSelector((state: any) => state?.tutor?.tutorDatas);
   const [isAccepted, setIsAccepted] = useState<boolean | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -199,9 +199,11 @@ export function Header() {
     try {
       localStorage.removeItem("tutorDatas");
       dispatch(removeTutor());
-      const response = await authAxiosInstance.post("/tutor/logout");
+      const response = await authAxiosInstance.post("/auth/logout");
       toast.success(response?.data.message);
       navigate("/auth");
+      navigate("/auth");
+
     } catch (error: any) {
       console.error("Failed to sign out:", {
         message: error.message,
@@ -215,6 +217,18 @@ export function Header() {
   const handleMyAccount = () => {
     navigate("/tutor/profile");
   };
+
+  const myWallet = () => {
+    navigate("/tutor/wallet");
+  };
+
+   const MyChat = () => {
+    navigate("/tutor/chat");
+  };
+  
+  const Dashboard = () => {
+      navigate("/tutor/home");
+    };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-lg shadow-slate-200/20">
@@ -257,11 +271,12 @@ export function Header() {
 
         <div className="flex items-center gap-4">
           <Button
+          onClick={MyChat}
             variant="ghost"
             size="icon"
             className="relative h-11 w-11 rounded-full bg-gradient-to-br from-slate-50 to-slate-100 hover:from-indigo-50 hover:to-purple-50 border border-slate-200 hover:border-indigo-300 transition-all duration-300 shadow-sm hover:shadow-md group"
           >
-            <MessageSquare className="h-5 w-5 text-slate-600 group-hover:text-indigo-600 transition-colors duration-300" />
+            <MessageSquare  className="h-5 w-5 text-slate-600 group-hover:text-indigo-600 transition-colors duration-300" />
           </Button>
 
           <DropdownMenu>
@@ -404,13 +419,13 @@ export function Header() {
                 onClick={handleMyAccount}
                 className="mx-2 mb-1 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 cursor-pointer transition-all duration-200 font-medium"
               >
-                Profile Settings
+                My Profile 
               </DropdownMenuItem>
-              <DropdownMenuItem className="mx-2 mb-1 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 cursor-pointer transition-all duration-200 font-medium">
+              <DropdownMenuItem onClick={Dashboard} className="mx-2 mb-1 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 cursor-pointer transition-all duration-200 font-medium">
                 Earnings & Analytics
               </DropdownMenuItem>
-              <DropdownMenuItem className="mx-2 mb-1 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 cursor-pointer transition-all duration-200 font-medium">
-                Preferences
+              <DropdownMenuItem onClick={myWallet} className="mx-2 mb-1 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-700 cursor-pointer transition-all duration-200 font-medium">
+                Wallet
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-slate-200 to-transparent my-2" />
               <DropdownMenuItem

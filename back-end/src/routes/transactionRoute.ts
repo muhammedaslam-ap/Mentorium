@@ -35,7 +35,16 @@ export class TransactionRoutes {
         console.log("hyhyhyhy12345")
         injectedTransactionController.getDashboard(req, res)
     });
+
+    this.router.get(
+      "/admin-wallet-details",
+      adminAuthMiddleware,
+      authorizeRole(["admin"]),
+      (req: Request, res: Response) =>
+        injectedTransactionController.getAdminWalletData(req, res)
+    );
   }
+
 
 }
 

@@ -1,9 +1,18 @@
+import mongoose, { isValidObjectId } from "mongoose";
 import { ITransactionRepository } from "../interfaces/repositoryInterface/ItransactionRepository";
+import { AdminWalletModel } from "../models/adminWallet";
 import { purchaseModel } from "../models/buyCourseModal";
 import { TransactionModel } from "../models/transactionModel";
 import { AdminDashboardData } from "../types/adminDashBoard";
-import { TTransaction } from "../types/transation";
+import { TTransaction, TTransactionAdmin } from "../types/transation";
+import { courseModel } from "../models/course";
+import { userModel } from "../models/userModel";
 
+
+interface PopulatedTutor {
+  _id: string;
+  name: string;
+}
 export class TransactionRepository implements ITransactionRepository {
   async transactionDetails(
     walletId: string,
@@ -150,4 +159,67 @@ export class TransactionRepository implements ITransactionRepository {
       recentTransactions: formattedTransactions,
     };
   }
+
+  async AdminWalletData(): Promise<TTransactionAdmin> {
+  const adminWallet = await AdminWalletModel.findOne({}).lean();
+
+  if (!adminWallet) {
+    return {
+      balance: 0,
+      transactions: [],
+    };
+  }
+
+  const formattedTransactions = await Promise.all(
+    adminWallet.transactions.map(async (tx: any) => {
+      let courseTitle = "N/A";
+      let tutorName = "N/A";
+
+      try {
+        // Get purchase document
+        const purchaseDoc = await purchaseModel.findById(tx.purchase_id).lean();
+
+        const courseId = purchaseDoc?.purchase?.[0]?.courseId;
+        const userId = purchaseDoc?.userId;
+
+        // Get course and tutor
+        if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+          const courseDoc = await courseModel.findById(courseId).lean();
+          courseTitle = courseDoc?.title || "N/A";
+
+          // Get tutor name from user model
+          const tutorId = courseDoc?.tutorId;
+          if (tutorId && mongoose.Types.ObjectId.isValid(tutorId)) {
+            const tutorDoc = await userModel.findById(tutorId).lean();
+            tutorName = tutorDoc?.name || "N/A";
+          }
+        }
+
+        // Optional fallback to userId (from purchaser)
+        if (tutorName === "N/A" && userId && mongoose.Types.ObjectId.isValid(userId)) {
+          const userDoc = await userModel.findById(userId).lean();
+          tutorName = userDoc?.name || "N/A";
+        }
+      } catch (err) {
+        console.error("Transaction fetch error:", err);
+      }
+
+      return {
+        transactionId: tx.transactionId,
+        amount: tx.amount,
+        transaction_type: tx.transaction_type,
+        transaction_date: tx.transaction_date,
+        description: tx.description,
+        courseName: courseTitle,
+        tutorName: tutorName,
+      };
+    })
+  );
+
+  return {
+    balance: adminWallet.balance,
+    transactions: formattedTransactions,
+  };
+}
+
 }
