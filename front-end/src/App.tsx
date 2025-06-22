@@ -60,8 +60,8 @@ function VideoCallHandler() {
     <>
       {videoCall && <OutgoingVideocallPage />}
       {showIncomingVideoCall?._id && <IncomingVideocallPage />}
-      {showIncomingCallTrainer && <TutorIncomingVideocall />} {/* Incoming call notification */}
-      {showVideoCallTrainer && <TrainerVideoCall />} {/* Video call UI */}
+      {showIncomingCallTrainer && <TutorIncomingVideocall />} 
+      {showVideoCallTrainer && <TrainerVideoCall />} 
       {showVideoCallUser && <VideoCallPage />}
     </>
   );
