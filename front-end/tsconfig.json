@@ -10,12 +10,12 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": "./src",                // <--- Important for @/ alias
+    "baseUrl": "./src",
     "paths": {
-      "@/*": ["*"]                     // <--- Enables "@/services/..." to work
-    }
+      "@/*": ["*"]
+    },
+    "outDir": "./dist",         // ✅ ADD THIS
+    "noEmit": true              // ✅ ADD THIS to prevent `tsc` from generating JS files at all
   },
-  "include": ["src",   
-   "tailwind.config.ts"
-]
+  "include": ["src", "tailwind.config.ts"]
 }
