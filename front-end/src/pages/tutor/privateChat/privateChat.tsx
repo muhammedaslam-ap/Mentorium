@@ -55,7 +55,7 @@ export function MessagesPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State for emoji picker visibility
 
   const { tutorId, tutorName } = useSelector((state: any) => ({
-    tutorId: state.tutor.tutorDatas?.id || null,
+    tutorId: state.tutor.tutorDatas?.id || state.tutor.tutorDatas?._id ,
     tutorName: state.tutor.tutorDatas?.username || "Unknown",
   }));
 

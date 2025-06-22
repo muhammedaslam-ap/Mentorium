@@ -151,7 +151,7 @@ export function PrivateChat() {
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { ref: loadMoreRef, inView } = useInView();
-  const user = useSelector((state: RootState) => state.user.userDatas);
+  const user = useSelector((state: any) => state.user.userDatas);
   const userId = user?._id || user?.id;
   const userName = user?.name || user?.username || "User";
   const studentId = user?.role === "student" ? userId : stateStudentId;
