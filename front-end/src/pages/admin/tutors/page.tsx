@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { tutorService } from "@/services/adminServices/tutorService"
 import { Search, CheckCircle, XCircle, Ban } from "lucide-react"
-import { AdminLayout } from "../componets/adminLayout"
+import { AdminLayout } from "../componets/AdminLayout"
 
 interface Tutor {
   _id: string

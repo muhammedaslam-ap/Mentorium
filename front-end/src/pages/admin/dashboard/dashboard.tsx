@@ -35,7 +35,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { authAxiosInstance } from "@/api/authAxiosInstance"
 import { toast } from "sonner"
-import { AdminLayout } from "../componets/adminLayout"
+import { AdminLayout } from "../componets/AdminLayout"
 interface User {
   _id: string
   name: string

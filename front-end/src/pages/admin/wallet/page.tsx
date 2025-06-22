@@ -8,7 +8,7 @@ import { walletService, type Transaction, type WalletData } from "@/services/wal
 import type { DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { AdminLayout } from "../componets/adminLayout"
+import { AdminLayout } from "../componets/AdminLayout"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
