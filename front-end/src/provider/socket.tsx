@@ -147,10 +147,10 @@ export const SocketContextProvider = ({ children }: { children: ReactNode }): JS
 
     socket.on("call_request", (data: CallRequest) => {
       console.log("Received call_request in SocketContextProvider:", data);
-      if (loggedUser && data.tutorId === loggedUser) {
+      // if (loggedUser && data.tutorId === loggedUser) {
         dispatch(setShowIncomingCallTrainer(true)); // Update to use incoming call flag
         toast.success(`Incoming call from ${data.callerName}`);
-      }
+      // }
     });
 
     socket.on("accepted-call", (data: AcceptedCallData) => {
