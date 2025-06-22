@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.injectedTutorController = void 0;
+const tutorRepository_1 = require("../repositories/tutorRepository");
+const tutorServices_1 = require("../services/tutorServices");
+const tutorController_1 = require("../controller/tutorController");
+const tutorRepository = new tutorRepository_1.TutorRepository();
+const tutorService = new tutorServices_1.TutorService(tutorRepository);
+const tutorController = new tutorController_1.TutorController(tutorService);
+exports.injectedTutorController = tutorController;

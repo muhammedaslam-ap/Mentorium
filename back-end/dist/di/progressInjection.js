@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.injectedProgressController = void 0;
+const progressRepository_1 = require("../repositories/progressRepository");
+const progressServices_1 = require("../services/progressServices");
+const progressController_1 = require("../controller/progressController");
+const progressRepository = new progressRepository_1.ProgressRepository();
+const progressService = new progressServices_1.ProgressService(progressRepository);
+const progressController = new progressController_1.ProgressController(progressService);
+exports.injectedProgressController = progressController;

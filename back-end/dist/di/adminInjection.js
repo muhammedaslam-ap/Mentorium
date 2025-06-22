@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.injectedAdminController = void 0;
+const adminController_1 = require("../controller/adminController");
+const tutorRepository_1 = require("../repositories/tutorRepository");
+const userRepository_1 = require("../repositories/userRepository");
+const adminServices_1 = require("../services/adminServices");
+const userRepository = new userRepository_1.UserRepository();
+const tutorRepository = new tutorRepository_1.TutorRepository();
+const adminService = new adminServices_1.AdminService(userRepository, tutorRepository);
+exports.injectedAdminController = new adminController_1.AdminController(adminService);

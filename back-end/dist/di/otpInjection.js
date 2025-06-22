@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.injectedOtpController = void 0;
+const otpController_1 = require("../controller/otpController");
+const otpRepository_1 = require("../repositories/otpRepository");
+const userRepository_1 = require("../repositories/userRepository");
+const otpServices_1 = require("../services/otp/otpServices");
+const otpRepository = new otpRepository_1.OtpRepository();
+const userRepository = new userRepository_1.UserRepository();
+const otpService = new otpServices_1.OtpService(otpRepository, userRepository);
+exports.injectedOtpController = new otpController_1.OtpController(otpService);
