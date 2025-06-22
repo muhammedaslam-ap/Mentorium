@@ -6,6 +6,7 @@ interface AdminLayoutProps {
   children: React.ReactNode
 }
 
+
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
