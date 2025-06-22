@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 const { Title, Text } = Typography;
 
+
 export const NotFound: React.FC = () => {
   const navigate = useNavigate();
 
