@@ -87,7 +87,7 @@ export const SocketContextProvider = ({ children }: { children: ReactNode }): JS
 
     console.log("Initializing socket for loggedUser:", loggedUser);
 
-    const socketUrl = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
+    const socketUrl = import.meta.env.VITE_AUTH_BASEURL || "http://localhost:3000";
     const newSocket = io(socketUrl, {
       query: { userId: loggedUser },
       transports: ["websocket"],

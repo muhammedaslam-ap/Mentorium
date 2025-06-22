@@ -86,7 +86,7 @@ export function MessagesPage() {
   useEffect(() => {
     if (!tutorId) return;
 
-    socketRef.current = io("http://localhost:3000", {
+    socketRef.current = io(import.meta.env.VITE_AUTH_BASEURL, {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

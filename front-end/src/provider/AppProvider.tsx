@@ -13,7 +13,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const socketInstance = io("http://localhost:3000", {
+    const socketInstance = io(import.meta.env.VITE_AUTH_BASEURL, {
       withCredentials: true, // Send cookies (tutorAccessToken)
       transports: ["websocket", "polling"],
       reconnection: true,
