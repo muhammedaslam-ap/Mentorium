@@ -38,7 +38,7 @@ cloudinary_1.v2.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 const corsOptions = {
-    origin: ["http://localhost:5173"],
+    origin: ["https://mentorium.aslamap.tech"],
     credentials: true,
     methods: ["GET", "POST", "OPTIONS", "PATCH", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
