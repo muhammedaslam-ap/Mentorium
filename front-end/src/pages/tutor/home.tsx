@@ -192,7 +192,7 @@ export function TutorHome() {
           data: walletError.response?.data,
         });
         setDebugData((prev: any) => ({ ...prev, walletError: walletError.message }));
-        toast.error("Failed to load wallet data");
+        toast.warn("Failed to load wallet data");
       }
 
       // Fetch transactions using /transaction/transaction-details

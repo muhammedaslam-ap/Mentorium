@@ -392,12 +392,12 @@ export function Header() {
                 <Avatar className="h-9 w-9 border-2 border-slate-300 group-hover:border-indigo-400 transition-colors duration-300">
                   <AvatarImage src="/placeholder.svg?height=36&width=36&text=T" alt="@tutor" />
                   <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-sm">
-                    {user?.username?.charAt(0).toUpperCase() || "T"}
+                    {user?.username?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden flex-col items-start text-sm lg:flex">
                   <span className="font-semibold text-slate-800 group-hover:text-indigo-700 transition-colors duration-300">
-                    {user?.username || "Tutor"}
+                    {user?.username || user?.name}
                   </span>
                   <span className="text-xs text-slate-500 font-medium tracking-wide">
                     INSTRUCTOR
