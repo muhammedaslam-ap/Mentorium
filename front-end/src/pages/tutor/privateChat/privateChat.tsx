@@ -622,7 +622,6 @@ export function MessagesPage() {
                           </p>
                         )}
                         <div className="flex items-center mt-2 text-xs text-slate-400">
-                          <span>Private Chat</span>
                           <span className="mx-2">•</span>
                           <span>{chat.latestMessage ? formatTimestamp(chat.latestMessage.timestamp) : "No messages yet"}</span>
                         </div>
