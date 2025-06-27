@@ -27,7 +27,7 @@ export const tutorService = {
       await authAdminAxiosInstance.patch(`/admin/${tutorId}/status`, {
         status: newBlocked,
       });
-      toast.success(newBlocked ? "Tutor blocked successfully" : "Tutor unblocked successfully");
+      toast.success(newBlocked ? " blocked successfully" : " unblocked successfully");
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       console.error(error);

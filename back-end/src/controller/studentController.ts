@@ -58,7 +58,7 @@ export class StudentController {
 
       const profile = await this.studentService.getStudentProfile(studentId);
       if (!profile) {
-        res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.CREATE_USER_PROFILE });
         return;
       }
 

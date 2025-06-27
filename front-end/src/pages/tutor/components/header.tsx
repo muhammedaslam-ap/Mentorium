@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { MessageSquare, ChevronDown, BookOpen, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
 import { io, Socket } from "socket.io-client";
 import { cn } from "@/lib/utils";
-// import { RootState } from "@/redux/store";
+import { useInView } from "react-intersection-observer";
 
 interface Notification {
   _id: string;
@@ -42,17 +42,26 @@ interface TutorState {
 export function Header() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-    const user = useSelector((state: any) => state?.tutor?.tutorDatas);
+  const user = useSelector((state: any) => state?.tutor?.tutorDatas);
   const [isAccepted, setIsAccepted] = useState<boolean | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [visibleNotifications, setVisibleNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const socketRef = useRef<Socket | null>(null);
+  const { ref: loadMoreRef, inView } = useInView();
+  const notificationsPerPage = 10;
 
   useEffect(() => {
     if (user) {
       setIsAccepted(user.isAccepted);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (inView && visibleNotifications.length < notifications.length) {
+      setVisibleNotifications((prev) => notifications.slice(0, prev.length + notificationsPerPage));
+    }
+  }, [inView, notifications]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -133,6 +142,24 @@ export function Header() {
     }
   }, [user?._id]);
 
+  const clearAllNotifications = useCallback(async () => {
+    try {
+      const userId = user?.id || user?._id;
+      if (!userId) {
+        toast.error("User ID not found");
+        return;
+      }
+      await authAxiosInstance.delete(`/notification/clear/${userId}`);
+      setNotifications([]);
+      setVisibleNotifications([]);
+      setUnreadCount(0);
+      toast.success("All notifications cleared");
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+      toast.error("Failed to clear notifications");
+    }
+  }, [user]);
+
   useEffect(() => {
     if (isAccepted === false) {
       toast.info("Please complete your profile verification to access all features.", {
@@ -202,8 +229,6 @@ export function Header() {
       const response = await authAxiosInstance.post("/auth/logout");
       toast.success(response?.data.message);
       navigate("/auth");
-      navigate("/auth");
-
     } catch (error: any) {
       console.error("Failed to sign out:", {
         message: error.message,
@@ -222,13 +247,13 @@ export function Header() {
     navigate("/tutor/wallet");
   };
 
-   const MyChat = () => {
+  const MyChat = () => {
     navigate("/tutor/chat");
   };
   
   const Dashboard = () => {
-      navigate("/tutor/home");
-    };
+    navigate("/tutor/home");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-lg shadow-slate-200/20">
@@ -271,12 +296,12 @@ export function Header() {
 
         <div className="flex items-center gap-4">
           <Button
-          onClick={MyChat}
+            onClick={MyChat}
             variant="ghost"
             size="icon"
             className="relative h-11 w-11 rounded-full bg-gradient-to-br from-slate-50 to-slate-100 hover:from-indigo-50 hover:to-purple-50 border border-slate-200 hover:border-indigo-300 transition-all duration-300 shadow-sm hover:shadow-md group"
           >
-            <MessageSquare  className="h-5 w-5 text-slate-600 group-hover:text-indigo-600 transition-colors duration-300" />
+            <MessageSquare className="h-5 w-5 text-slate-600 group-hover:text-indigo-600 transition-colors duration-300" />
           </Button>
 
           <DropdownMenu>
@@ -322,14 +347,21 @@ export function Header() {
               ) : (
                 <div className="max-h-96 overflow-y-auto">
                   {unreadCount > 0 && (
-                    <DropdownMenuItem
-                      onClick={markAllNotificationsAsRead}
-                      className="mx-2 mb-2 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 font-medium cursor-pointer transition-all duration-200 border border-indigo-200"
-                    >
-                      <div className="flex items-center gap-2">
+                    <DropdownMenuItem>
+                      <div
+                        onClick={markAllNotificationsAsRead}
+                        className="mx-2 mb-2 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 font-medium cursor-pointer transition-all duration-200 border border-indigo-200"
+                      >
                         <div className="h-2 w-2 bg-indigo-500 rounded-full"></div>
                         Mark all as read
                       </div>
+                      <div className="h-2 w-2 bg-indigo-500 rounded-full"></div>
+                      <button
+                        onClick={clearAllNotifications}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+                      >
+                        Clear all
+                      </button>
                     </DropdownMenuItem>
                   )}
                   

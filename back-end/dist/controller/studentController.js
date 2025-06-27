@@ -63,7 +63,7 @@ class StudentController {
                 }
                 const profile = yield this.studentService.getStudentProfile(studentId);
                 if (!profile) {
-                    res.status(constant_1.HTTP_STATUS.NOT_FOUND).json({ message: constant_1.ERROR_MESSAGES.USER_NOT_FOUND });
+                    res.status(constant_1.HTTP_STATUS.NOT_FOUND).json({ message: constant_1.ERROR_MESSAGES.CREATE_USER_PROFILE });
                     return;
                 }
                 res.status(constant_1.HTTP_STATUS.OK).json({ message: constant_1.SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS, profile });

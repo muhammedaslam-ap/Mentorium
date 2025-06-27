@@ -49,6 +49,7 @@ exports.ERROR_MESSAGES = {
     INVALID_TOKEN: "Invalid token",
     INVALID_CREDENTIALS: "Invalid credentials provided.",
     USER_NOT_FOUND: "User not found.",
+    CREATE_USER_PROFILE: "Create User Profile",
     UNAUTHORIZED_ACCESS: "Unauthorized access.",
     SERVER_ERROR: "An error occurred, please try again later.",
     VALIDATION_ERROR: "Validation error occurred.",

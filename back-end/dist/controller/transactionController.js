@@ -26,13 +26,17 @@ class TransactionController {
                     endDate: typeof endDate === "string" ? endDate : undefined,
                 };
                 if (!walletId || typeof walletId !== "string") {
-                    res.status(constant_1.HTTP_STATUS.BAD_REQUEST).json({ error: "walletId is required" });
+                    res.status(constant_1.HTTP_STATUS.BAD_REQUEST).json({ success: false, message: "walletId is required and must be a string" });
                     return;
                 }
                 const page = parseInt(req.query.page) || 1;
                 const limit = parseInt(req.query.limit) || 6;
                 console.log("PAGE AND LIMIT", page, limit, filters);
                 const { transactions, totalTransaction } = yield this._transactionService.transactionDetails(walletId, page, limit, filters);
+                if (!transactions) {
+                    res.status(constant_1.HTTP_STATUS.NOT_FOUND).json({ success: false, message: "No transactions found" });
+                    return;
+                }
                 res.status(constant_1.HTTP_STATUS.OK).json({
                     success: true,
                     message: constant_1.SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
@@ -47,7 +51,7 @@ class TransactionController {
                         .json({ success: false, message: error.message });
                     return;
                 }
-                console.log(error);
+                console.error("[ERROR] transactionDetails:", error);
                 res
                     .status(constant_1.HTTP_STATUS.INTERNAL_SERVER_ERROR)
                     .json({ success: false, message: constant_1.ERROR_MESSAGES.SERVER_ERROR });

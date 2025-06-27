@@ -22,11 +22,6 @@ const userModel_1 = require("../models/userModel");
 class TransactionRepository {
     transactionDetails(walletId_1, page_1, limit_1) {
         return __awaiter(this, arguments, void 0, function* (walletId, page, limit, filters = {}) {
-            // const transactions = await TransactionModel.find({ wallet_id: walletId })
-            //   .skip((page - 1) * limit)
-            //   .limit(limit)
-            //   .sort({ transaction_date: -1 })
-            //   .populate("purchase_id", "orderId");
             const query = { wallet_id: walletId };
             console.log("FILTERS IN THE REPOSITORY", filters);
             // Apply date range filter
@@ -49,6 +44,16 @@ class TransactionRepository {
             })
                 .lean(); // Convert Mongoose documents to plain JS objects
             console.log("in transaction page");
+            // Filter out transactions with missing purchase_id or userId
+            transactions = transactions.filter((transaction) => {
+                const hasValidPurchase = transaction.purchase_id && transaction.purchase_id.userId;
+                if (!hasValidPurchase) {
+                    console.warn("Skipping transaction with missing purchase_id or userId:", transaction);
+                    return false;
+                }
+                return true;
+            });
+            // Apply courseName filter
             if (filters.courseName) {
                 const courseNameLower = filters.courseName.toLowerCase();
                 transactions = transactions.filter((transaction) => {

@@ -327,7 +327,7 @@ const AdminDashboard = () => {
         <StatCard
           title="Total Revenue"
           value={`₹${dashboardData.totalRevenue.toLocaleString()}`}
-          change="+12.5%"
+          // change="+12.5%"
           changeType="increase"
           icon={DollarSign}
           color="green"
@@ -335,7 +335,7 @@ const AdminDashboard = () => {
         <StatCard
           title="Total Purchases"
           value={dashboardData.totalPurchases}
-          change="+8.2%"
+          // change="+8.2%"
           changeType="increase"
           icon={ShoppingCart}
           color="blue"
@@ -343,7 +343,7 @@ const AdminDashboard = () => {
         <StatCard
           title="Total Transactions"
           value={dashboardData.totalTransactions}
-          change="+15.3%"
+          // change="+15.3%"
           changeType="increase"
           icon={CreditCard}
           color="purple"
@@ -351,7 +351,7 @@ const AdminDashboard = () => {
         <StatCard
           title="Avg. Transaction"
           value={`₹${Math.round(dashboardData.totalRevenue / dashboardData.totalTransactions || 0).toLocaleString()}`}
-          change="-2.1%"
+          // change="-2.1%"
           changeType="decrease"
           icon={TrendingUp}
           color="gray"

@@ -47,6 +47,10 @@ import TutorProfile from "./pages/student/tutor/tutorProfile";
 import { SocketContextProvider } from "./provider/socket";
 import TrainerVideoCall from "./pages/tutor/videoCall/outGoingCall"; // Ensure this path matches
 import AdminWalletPage from "./pages/admin/wallet/page";
+import LearningPathPage from "./pages/student/learningPath";
+import AboutPage from "./pages/student/about";
+import TutorCallHistory from "./pages/tutor/videoCall/callVideo";
+import StudentCallHistory from "./pages/student/videoCall/callHistory";
 
 function VideoCallHandler() {
   const { videoCall, showVideoCallTrainer, showIncomingCallTrainer } = useSelector(
@@ -92,10 +96,36 @@ function App() {
                   }
                 />
                 <Route
+                  path="/paths"
+                  element={
+                    // <PublicUserRoute>
+                      <LearningPathPage />
+                    // </PublicUserRoute>
+                  }
+                />
+
+                <Route
+                  path="/about"
+                  element={
+                    // <PublicUserRoute>
+                      <AboutPage />
+                    // </PublicUserRoute>
+                  }
+                />
+
+                <Route
                   path="/tutor/home"
                   element={
                     <ProtectedTutorRoute>
                       <TutorHome />
+                    </ProtectedTutorRoute>
+                  }
+                />
+                <Route
+                  path="/tutor/callHistory"
+                  element={
+                    <ProtectedTutorRoute>
+                      <TutorCallHistory />
                     </ProtectedTutorRoute>
                   }
                 />
@@ -113,6 +143,14 @@ function App() {
                   element={
                     <ProtectedUserRoute>
                       <StudentProfilePage />
+                    </ProtectedUserRoute>
+                  }
+                />
+                 <Route
+                  path="/student/callHistory"
+                  element={
+                    <ProtectedUserRoute>
+                      <StudentCallHistory />
                     </ProtectedUserRoute>
                   }
                 />

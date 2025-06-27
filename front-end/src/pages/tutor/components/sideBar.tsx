@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { User, Users, DollarSign, Book, ClipboardList, MessageSquare, LogOut, LayoutDashboard, Wallet } from "lucide-react"
+import { User, Users, DollarSign, Book, ClipboardList, MessageSquare, LogOut, LayoutDashboard, Wallet, PhoneCall } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { useState, useEffect } from "react"
@@ -44,9 +44,10 @@ export function Sidebar({ sidebarOpen } : {sidebarOpen : boolean}) {
     //   disabled: isAccepted === false,
     // },
     { icon: <Book className="h-4 w-4" />, name: "Courses", path: "/tutor/courses", disabled: isAccepted === false },
-    // { icon: <ClipboardList className="h-4 w-4" />, name: "Quiz", path: "/tutor/quiz", disabled: isAccepted === false },
     { icon: <Wallet className="h-4 w-4" />, name: "Wallet", path: "/tutor/wallet", disabled: isAccepted === false },
     { icon: <MessageSquare className="h-4 w-4" />, name: "Chat", path: "/tutor/chat", disabled: isAccepted === false },
+    { icon: <PhoneCall className="h-4 w-4" />, name: "Call History", path: "/tutor/callHistory", disabled: isAccepted === false },
+
   ]
 
   const handleLogout = async () => {

@@ -1,5 +1,4 @@
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Search, Ban, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { studentService } from "@/services/adminServices/userService"
 import { AdminLayout } from "../componets/AdminLayout"
-// import { toast } from "sonner"
-
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
+import { AlertDialogHeader } from "@/components/ui/alert-dialog"
 
 interface Student {
   _id: string
@@ -35,6 +34,9 @@ export default function StudentsManagement() {
     totalStudents: 0,
   })
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false)
+  const [blockStudentId, setBlockStudentId] = useState<string | null>(null)
+  const [blockAction, setBlockAction] = useState<boolean | null>(null)
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -54,16 +56,12 @@ export default function StudentsManagement() {
   }
 
   useEffect(() => {
-    console.log(students)
-  }, [students])
-
-  useEffect(() => {
     fetchStudents()
   }, [pagination.currentPage, rowsPerPage, searchQuery])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    setPagination((prev) => ({ ...prev, currentPage: 1 })) // Reset to first page on new search
+    setPagination((prev) => ({ ...prev, currentPage: 1 }))
     fetchStudents()
   }
 
@@ -76,7 +74,6 @@ export default function StudentsManagement() {
   const handleBlockStudent = async (studentId: string, currentBlockedStatus: boolean) => {
     try {
       await studentService.blockUser(studentId, !currentBlockedStatus)
-      // Update the local state to reflect the change
       setStudents(
         students.map((student) =>
           student._id === studentId ? { ...student, isBlocked: !currentBlockedStatus } : student,
@@ -84,6 +81,19 @@ export default function StudentsManagement() {
       )
     } catch (error) {
       console.error("Failed to update student status:", error)
+    }
+  }
+
+  const openBlockDialog = (studentId: string, currentBlockedStatus: boolean) => {
+    setBlockStudentId(studentId)
+    setBlockAction(!currentBlockedStatus)
+    setIsBlockDialogOpen(true)
+  }
+
+  const confirmBlockStudent = async () => {
+    if (blockStudentId && blockAction !== null) {
+      await handleBlockStudent(blockStudentId, !blockAction)
+      setIsBlockDialogOpen(false)
     }
   }
 
@@ -174,7 +184,7 @@ export default function StudentsManagement() {
                           ? "border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700"
                           : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
                       }`}
-                      onClick={() => handleBlockStudent(student._id, student.isBlocked)}
+                      onClick={() => openBlockDialog(student._id, student.isBlocked)}
                     >
                       {student.isBlocked ? (
                         <>
@@ -225,6 +235,35 @@ export default function StudentsManagement() {
           </div>
         </div>
       </div>
+
+      {/* Block Dialog */}
+      <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <DialogTitle className="text-violet-900">
+              {blockAction === false ? "Block Student" : "Unblock Student"}
+            </DialogTitle>
+            <DialogDescription className="text-violet-600">
+              Are you sure you want to {blockAction === false ? "block" : "unblock"} this student? This action cannot be undone.
+            </DialogDescription>
+          </AlertDialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBlockDialogOpen(false)}
+              className="border-violet-200 text-violet-700 hover:bg-violet-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBlockStudent}
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }

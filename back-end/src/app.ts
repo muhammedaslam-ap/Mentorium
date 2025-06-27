@@ -26,6 +26,8 @@ import { ProgressRoutes } from "./routes/progressRoute";
 import { TransactionRoutes } from "./routes/transactionRoute";
 import { ReviewRoutes } from "./routes/reviewRoute";
 import videoCallRouter from "./routes/videoCallRoute";
+import { CallHistoryRoute } from "./routes/callHistoryRoute";
+import { NotificationRoute } from "./routes/notificationRoute";
 
 connectDB();
 
@@ -69,6 +71,8 @@ try {
   app.use("/progress", new ProgressRoutes().router);
   app.use("/transaction", new TransactionRoutes().router);
   app.use("/reviews", new ReviewRoutes().router);
+  app.use('/',new CallHistoryRoute().router)
+  app.use('/notification',new NotificationRoute().router)
   app.use("/api",  videoCallRouter);
 
 

@@ -20,6 +20,7 @@ import {
   CheckCircle,
   Award,
   Video,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1354,45 +1355,47 @@ const CourseDetails = () => {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="instructor" className="space-y-6">
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-8 space-y-8">
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">About the Instructor</h3>
+             <TabsContent value="instructor" className="space-y-6">
+                <Card className="border-gray-200 dark:border-gray-700 shadow-sm">
+                  <CardContent className="p-6 md:p-8">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">About the Instructor</h3>
                     {memoizedCourse.tutor ? (
-                      <div className="flex flex-col md:flex-row gap-8">
-                        <div className="flex-shrink-0 text-center md:text-left">
-                          <Avatar className="h-32 w-32 mx-auto md:mx-0 mb-4">
-                            <AvatarImage src="/placeholder.svg?height=128&width=128" alt={memoizedCourse.tutor.name} />
-                            <AvatarFallback className="text-3xl bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400">
+                      <div className="flex flex-col gap-6">
+                        <div className="flex-shrink-0 text-center">
+                          <Avatar className="h-24 w-24 mx-auto mb-3">
+                            <AvatarImage src="/placeholder.svg?height=96&width=96" alt={memoizedCourse.tutor.name} />
+                            <AvatarFallback className="text-2xl bg-blue-200 dark:bg-blue-700 text-blue-600 dark:text-blue-300">
                               {memoizedCourse.tutor.name.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <h4 className="text-xl font-bold text-gray-900 dark:text-white">{memoizedCourse.tutor.name}</h4>
-                          <p className="text-gray-600 dark:text-gray-300 font-medium">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{memoizedCourse.tutor.name}</h4>
+                          <p className="text-gray-600 dark:text-gray-300 font-medium text-sm mb-4">
                             {memoizedCourse.tutor.specialization || "Expert Educator"}
                           </p>
                         </div>
-                        <div className="flex-grow space-y-6">
-                          <Card className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
-                            <CardContent className="p-6">
-                              <h5 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">Biography</h5>
-                              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                {memoizedCourse.tutor.bio || "Passionate educator helping students succeed."}
-                              </p>
-                            </CardContent>
-                          </Card>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <h5 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                              <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              Biography
+                            </h5>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
+                              {memoizedCourse.tutor.bio || "Passionate educator dedicated to helping students achieve their goals."}
+                            </p>
+                          </div>
                           {memoizedCourse.tutor.phone && (
-                            <Card className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
-                              <CardContent className="p-6">
-                                <h5 className="font-bold text-gray-900 dark:text-white mb-3 text-lg">Contact</h5>
-                                <p className="text-gray-700 dark:text-gray-300">
-                                  <span className="font-semibold">Phone:</span> {memoizedCourse.tutor.phone}
-                                </p>
-                              </CardContent>
-                            </Card>
+                            <div className="space-y-2">
+                              <h5 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                Contact
+                              </h5>
+                              <p className="text-gray-700 dark:text-gray-300 text-sm">
+                                <span className="font-medium">Phone:</span> {memoizedCourse.tutor.phone}
+                              </p>
+                            </div>
                           )}
                           <Button
-                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm"
                             onClick={() => navigate(`/student/tutor/${memoizedCourse.tutor?._id || memoizedCourse.tutorId}`)}
                             disabled={!memoizedCourse.tutor?._id && !memoizedCourse.tutorId}
                           >
@@ -1401,10 +1404,10 @@ const CourseDetails = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-12">
-                        <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Instructor unavailable</h4>
-                        <p className="text-gray-600 dark:text-gray-300">Details about the instructor coming soon.</p>
+                      <div className="text-center py-10">
+                        <User className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Instructor Unavailable</h4>
+                        <p className="text-gray-600 dark:text-gray-300 text-sm">Details about the instructor are coming soon.</p>
                       </div>
                     )}
                   </CardContent>

@@ -142,7 +142,6 @@ const NavLinks = React.memo(
 );
 
 const Header: React.FC = () => {
-  // ... keep existing code (all state declarations and hooks)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
@@ -159,7 +158,6 @@ const Header: React.FC = () => {
 
   const notificationsPerPage = 10;
 
-  // ... keep existing code (all useEffect hooks and functions)
   useEffect(() => {
     setVisibleNotifications(notifications.slice(0, notificationsPerPage));
   }, [notifications]);
@@ -237,6 +235,25 @@ const Header: React.FC = () => {
     }
   }, [notifications]);
 
+  const clearAllNotifications = useCallback(async () => {
+    try {
+      const userId = user?.id || user?._id;
+      if (!userId) {
+        toast.error("User ID not found");
+        return;
+      }
+      await authAxiosInstance.delete(`/notification/clear/${userId}`);
+      setNotifications([]);
+      setVisibleNotifications([]);
+      setUnreadCount(0);
+      toast.success("All notifications cleared");
+      socketRef.current?.emit("clear_all_notifications", { userId });
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+      toast.error("Failed to clear notifications");
+    }
+  }, [user]);
+
   const handleLogout = useCallback(async () => {
     try {
       await userAuthService.logoutUser();
@@ -284,8 +301,12 @@ const Header: React.FC = () => {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       });
 
-      socketRef.current.on("connect_error", (error) => {
-        console.error("Socket.IO connection error in Header:", error);
+      socketRef.current.on("notifications_cleared", ({ userId }: { userId: string }) => {
+        if (userId === (user.id || user._id)) {
+          setNotifications([]);
+          setVisibleNotifications([]);
+          setUnreadCount(0);
+        }
       });
 
       return () => {
@@ -293,7 +314,7 @@ const Header: React.FC = () => {
         socketRef.current?.off("notification");
         socketRef.current?.off("receive_notification");
         socketRef.current?.off("notification_read");
-        socketRef.current?.off("connect_error");
+        socketRef.current?.off("notifications_cleared");
         socketRef.current?.disconnect();
       };
     }
@@ -413,13 +434,21 @@ const Header: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  {memoizedUnreadCount > 0 && (
-                    <button
-                      onClick={markAllNotificationsAsRead}
-                      className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
-                    >
-                      Mark all as read
-                    </button>
+                  {memoizedNotifications.length > 0 && (
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={markAllNotificationsAsRead}
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+                      >
+                        Mark all as read
+                      </button>
+                      <button
+                        onClick={clearAllNotifications}
+                        className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium transition-colors"
+                      >
+                        Clear all
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="max-h-80 overflow-y-auto custom-scrollbar">
@@ -504,7 +533,6 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Menu - keeping existing functionality */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 dark:bg-black/75 md:hidden animate-fade-in">
           <div className="fixed right-0 top-0 h-full w-4/5 max-w-sm bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 border-l border-gray-200/50 dark:border-gray-700/50">
@@ -568,7 +596,6 @@ const Header: React.FC = () => {
         </div>
       )}
 
-      {/* Mobile Notification Menu - keeping existing functionality */}
       {notificationMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 dark:bg-black/75 md:hidden">
           <div className="fixed right-0 top-0 h-full w-4/5 max-w-sm bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 border-l border-gray-200/50 dark:border-gray-700/50">
@@ -595,14 +622,20 @@ const Header: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {memoizedUnreadCount > 0 && (
+                  <div className="mb-4 flex gap-4">
                     <button
                       onClick={markAllNotificationsAsRead}
-                      className="w-full text-left text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 font-medium"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
                     >
                       Mark all as read
                     </button>
-                  )}
+                    <button
+                      onClick={clearAllNotifications}
+                      className="text-sm text-red-600 dark:text-red-400 hover:underline font-medium"
+                    >
+                      Clear all
+                    </button>
+                  </div>
                   <div className="max-h-80 overflow-y-auto custom-scrollbar -mx-6">
                     {visibleNotifications.map((notification) => (
                       <NotificationItem

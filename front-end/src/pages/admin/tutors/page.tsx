@@ -45,6 +45,11 @@ export default function TutorsManagement() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState("")
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null)
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false)
+  const [blockTutorId, setBlockTutorId] = useState<string | null>(null)
+  const [blockAction, setBlockAction] = useState<boolean | null>(null)
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
+  const [approveTutorId, setApproveTutorId] = useState<string | null>(null)
 
   const fetchTutors = async () => {
     setLoading(true)
@@ -88,12 +93,37 @@ export default function TutorsManagement() {
     }
   }
 
+  const openBlockDialog = (tutorId: string, currentBlockedStatus: boolean) => {
+    setBlockTutorId(tutorId)
+    setBlockAction(!currentBlockedStatus)
+    setIsBlockDialogOpen(true)
+  }
+
+  const confirmBlockTutor = async () => {
+    if (blockTutorId && blockAction !== null) {
+      await handleBlockTutor(blockTutorId, !blockAction)
+      setIsBlockDialogOpen(false)
+    }
+  }
+
   const handleApproveTutor = async (tutorId: string) => {
     try {
       await tutorService.tutorApproval(tutorId)
       setTutors(tutors.map((tutor) => (tutor._id === tutorId ? { ...tutor, approvalStatus: 'approved' } : tutor)))
     } catch (error) {
       console.error("Failed to approve tutor:", error)
+    }
+  }
+
+  const openApproveDialog = (tutorId: string) => {
+    setApproveTutorId(tutorId)
+    setIsApproveDialogOpen(true)
+  }
+
+  const confirmApproveTutor = async () => {
+    if (approveTutorId) {
+      await handleApproveTutor(approveTutorId)
+      setIsApproveDialogOpen(false)
     }
   }
 
@@ -213,7 +243,7 @@ export default function TutorsManagement() {
                               size="sm"
                               variant="outline"
                               className="h-8 border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700"
-                              onClick={() => handleApproveTutor(tutor._id)}
+                              onClick={() => openApproveDialog(tutor._id)}
                             >
                               <CheckCircle className="mr-1 h-3.5 w-3.5" />
                               Approve
@@ -241,7 +271,7 @@ export default function TutorsManagement() {
                               ? "border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-700"
                               : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
                           }`}
-                          onClick={() => handleBlockTutor(tutor._id, tutor.isBlocked)}
+                          onClick={() => openBlockDialog(tutor._id, tutor.isBlocked)}
                         >
                           {tutor.isBlocked ? (
                             <>
@@ -325,6 +355,62 @@ export default function TutorsManagement() {
               className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               Confirm Rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Dialog */}
+      <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-violet-900">
+              {blockAction === false ? "Block Tutor" : "Unblock Tutor"}
+            </DialogTitle>
+            <DialogDescription className="text-violet-600">
+              Are you sure you want to {blockAction === false ? "block" : "unblock"} this tutor? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBlockDialogOpen(false)}
+              className="border-violet-200 text-violet-700 hover:bg-violet-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBlockTutor}
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Dialog */}
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-violet-900">Approve Tutor</DialogTitle>
+            <DialogDescription className="text-violet-600">
+              Are you sure you want to approve this tutor? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsApproveDialogOpen(false)}
+              className="border-violet-200 text-violet-700 hover:bg-violet-100"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmApproveTutor}
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+            >
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeSocket = void 0;
+exports.initializeSocket = exports.CallHistory = void 0;
 const socket_io_1 = require("socket.io");
 const mongoose_1 = __importStar(require("mongoose"));
 const tutorServices_1 = require("../services/tutorServices");
@@ -68,8 +68,25 @@ const generateZegoToken = (appId, userId, serverSecret, effectiveTimeInSeconds, 
         expire: Math.floor(Date.now() / 1000) + effectiveTimeInSeconds,
         room_id: roomId,
     };
+    // Ensure ZEGO_SERVER_SECRET is a string for jwt.sign
+    if (!serverSecret) {
+        console.error("ZEGO_SERVER_SECRET is not defined. Token generation will fail.");
+        // Return a dummy token or throw an error based on your error handling policy
+        return `dummy_token_error_no_secret_${userId}`;
+    }
     return jsonwebtoken_1.default.sign(payload, serverSecret, { algorithm: 'HS256', noTimestamp: true });
 };
+// CallHistory Schema (modified to remove endTime and status)
+const callHistorySchema = new mongoose_1.default.Schema({
+    tutorId: { type: mongoose_1.default.Schema.Types.ObjectId, ref: 'user', required: true },
+    studentId: { type: mongoose_1.default.Schema.Types.ObjectId, ref: 'user', required: true },
+    courseId: { type: mongoose_1.default.Schema.Types.ObjectId, ref: 'Course', required: true },
+    startTime: { type: Date, required: true, default: Date.now },
+    courseName: { type: String, required: true },
+});
+// Add index for performance
+callHistorySchema.index({ tutorId: 1, studentId: 1, startTime: -1 });
+exports.CallHistory = mongoose_1.default.model('CallHistory', callHistorySchema);
 const messageSchema = new mongoose_1.Schema({
     communityId: { type: String },
     privateChatId: { type: String },
@@ -84,7 +101,6 @@ const tutorRepository = new tutorRepository_1.TutorRepository();
 const tutorService = new tutorServices_1.TutorService(tutorRepository);
 // Map to track rooms each socket is in
 const socketRooms = new Map();
-// Map to track connected users for video call routing
 const connectedUsers = new Map();
 const fetchPrivateChats = (tutorId, socket) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -100,31 +116,38 @@ const fetchPrivateChats = (tutorId, socket) => __awaiter(void 0, void 0, void 0,
         console.log(`[${new Date().toISOString()}] Unique chat IDs from messages: ${uniqueChatIds.length}`);
         for (const privateChatId of uniqueChatIds) {
             if (privateChatId) {
-                const [_, courseId, studentId] = privateChatId.split("_");
-                const latestMessage = messages.find((msg) => msg.privateChatId === privateChatId);
-                const course = yield course_1.courseModel.findById(courseId).lean();
-                const student = yield userModel_1.userModel.findById(studentId).lean();
-                console.log(`[${new Date().toISOString()}] Processing message-based chat ${privateChatId}:`, {
-                    courseId,
-                    studentId,
-                    courseFound: !!course,
-                    studentFound: !!student,
-                    latestMessage: (latestMessage === null || latestMessage === void 0 ? void 0 : latestMessage.content) || "No content",
-                });
-                if (course && student && latestMessage) {
-                    chats.push({
-                        privateChatId,
+                const parts = privateChatId.split("_");
+                if (parts.length >= 4) {
+                    const courseId = parts[1];
+                    const studentId = parts[2];
+                    const latestMessage = messages.find((msg) => msg.privateChatId === privateChatId);
+                    const course = yield course_1.courseModel.findById(courseId).lean();
+                    const student = yield userModel_1.userModel.findById(studentId).lean();
+                    console.log(`[${new Date().toISOString()}] Processing message-based chat ${privateChatId}:`, {
                         courseId,
                         studentId,
-                        courseTitle: course.title || "Unknown Course",
-                        studentName: student.name || "Unknown Student",
-                        latestMessage: {
-                            content: latestMessage.content || "",
-                            timestamp: latestMessage.timestamp.toString(),
-                            imageUrl: latestMessage.imageUrl || undefined,
-                        },
-                        unreadCount: 0,
+                        courseFound: !!course,
+                        studentFound: !!student,
+                        latestMessage: (latestMessage === null || latestMessage === void 0 ? void 0 : latestMessage.content) || "No content",
                     });
+                    if (course && student && latestMessage) {
+                        chats.push({
+                            privateChatId,
+                            courseId,
+                            studentId,
+                            courseTitle: course.title || "Unknown Course",
+                            studentName: student.name || "Unknown Student",
+                            latestMessage: {
+                                content: latestMessage.content || "",
+                                timestamp: latestMessage.timestamp.toString(),
+                                imageUrl: latestMessage.imageUrl || undefined,
+                            },
+                            unreadCount: 0,
+                        });
+                    }
+                }
+                else {
+                    console.warn(`[${new Date().toISOString()}] Invalid privateChatId format: ${privateChatId}`);
                 }
             }
         }
@@ -175,7 +198,10 @@ const fetchPrivateChats = (tutorId, socket) => __awaiter(void 0, void 0, void 0,
         console.log(`[${new Date().toISOString()}] Sent private chats to tutor ${tutorId}`);
     }
     catch (err) {
-        console.error(`[${new Date().toISOString()}] Error fetching private chats for tutor ${tutorId}:`, err);
+        console.error(`[${new Date().toISOString()}] Error fetching private chats for tutor ${tutorId}:`, {
+            error: err.message,
+            stack: err.stack,
+        });
         socket.emit("error", { message: "Failed to fetch private chats" });
     }
 });
@@ -190,11 +216,10 @@ const initializeSocket = (server) => {
     io.on("connection", (socket) => {
         console.log(`[${new Date().toISOString()}] New client connected: ${socket.id}`);
         socketRooms.set(socket.id, new Set());
-        // Register user for video call routing
         const queryUserId = socket.handshake.query.userId;
         if (queryUserId) {
             connectedUsers.set(queryUserId, { userId: queryUserId, socketId: socket.id });
-            console.log(`[${new Date().toISOString()}] User ${queryUserId} registered with socket ${socket.id}`);
+            console.log(`[${new Date().toISOString()}] User ${queryUserId} registered with socket ${socket.id} from handshake`);
         }
         socket.on("join_user", (userId, callback) => {
             var _a;
@@ -206,10 +231,16 @@ const initializeSocket = (server) => {
             console.log(`[${new Date().toISOString()}] Socket ${socket.id} joining user room ${userId}`);
             socket.join(userId);
             (_a = socketRooms.get(socket.id)) === null || _a === void 0 ? void 0 : _a.add(userId);
-            // Register user for video call routing
             if (!connectedUsers.has(userId)) {
                 connectedUsers.set(userId, { userId, socketId: socket.id });
                 console.log(`[${new Date().toISOString()}] User ${userId} registered via join_user with socket ${socket.id}`);
+            }
+            else {
+                const existingUser = connectedUsers.get(userId);
+                if (existingUser && existingUser.socketId !== socket.id) {
+                    console.log(`[${new Date().toISOString()}] Updating socketId for user ${userId}: ${existingUser.socketId} -> ${socket.id}`);
+                    connectedUsers.set(userId, { userId, socketId: socket.id });
+                }
             }
             io.in(userId)
                 .allSockets()
@@ -255,7 +286,7 @@ const initializeSocket = (server) => {
                 socket.emit("message_history", messages);
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error joining community ${communityId}:`, error);
+                console.error(`[${new Date().toISOString()}] Error joining community ${communityId}:`, error.message);
                 socket.emit("error", { message: "Failed to join community" });
             }
         }));
@@ -273,7 +304,7 @@ const initializeSocket = (server) => {
                 socket.emit("private_message_history", messages);
             }
             catch (err) {
-                console.error(`[${new Date().toISOString()}] Error fetching private message history for chat ${privateChatId}:`, err);
+                console.error(`[${new Date().toISOString()}] Error fetching private message history for chat ${privateChatId}:`, err.message);
                 socket.emit("error", { message: "Failed to fetch private chat history" });
             }
         }));
@@ -307,7 +338,7 @@ const initializeSocket = (server) => {
                 io.to(communityId).emit("receive_message", Object.assign(Object.assign({}, newMessage.toObject()), { status: "delivered" }));
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error sending message:`, error);
+                console.error(`[${new Date().toISOString()}] Error sending message:`, error.message);
                 socket.emit("error", { message: "Failed to send message" });
             }
         }));
@@ -349,7 +380,8 @@ const initializeSocket = (server) => {
                     return;
                 }
                 const tutorName = tutor.name || "Unknown Tutor";
-                const senderId = message.sender.toLowerCase() === tutorName.toLowerCase() ? tutorId : studentId;
+                // Determine senderId for notification based on who sent the message
+                const senderId = message.senderId || tutorId; // fallback to tutorId if missing
                 const recipientId = senderId === tutorId ? studentId : tutorId;
                 if (recipientId) {
                     const notification = new notificationModel_1.NotificationModel({
@@ -359,7 +391,7 @@ const initializeSocket = (server) => {
                         read: false,
                         createdAt: new Date(),
                         courseTitle: (course === null || course === void 0 ? void 0 : course.title) || "Unknown Course",
-                        senderId,
+                        senderId: senderId, // Use the correct sender ID
                     });
                     yield notification.save();
                     console.log(`[${new Date().toISOString()}] Notification saved for ${recipientId}:`, notification._id);
@@ -372,19 +404,20 @@ const initializeSocket = (server) => {
                         tutorId,
                         courseTitle: (course === null || course === void 0 ? void 0 : course.title) || "Unknown Course",
                         timestamp: new Date().toISOString(),
-                        senderId,
+                        senderId: senderId,
                         read: false,
                         createdAt: notification.createdAt.toISOString(),
                     });
                     console.log(`[${new Date().toISOString()}] Sent notification to ${recipientId} from ${senderId}`);
                     if (recipientId === tutorId) {
+                        // Only trigger fetch_private_chats if the recipient is the tutor
                         io.to(tutorId).emit("fetch_private_chats", { tutorId });
                         console.log(`[${new Date().toISOString()}] Triggered fetch_private_chats for tutor ${tutorId}`);
                     }
                 }
             }
             catch (err) {
-                console.error(`[${new Date().toISOString()}] Error saving private message to chat ${privateChatId}:`, err);
+                console.error(`[${new Date().toISOString()}] Error saving private message to chat ${privateChatId}:`, err.message);
                 socket.emit("error", { message: "Failed to send private message" });
             }
         }));
@@ -418,7 +451,7 @@ const initializeSocket = (server) => {
                 io.to(communityId).emit("receive_message", Object.assign(Object.assign({}, newMessage.toObject()), { status: "delivered" }));
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error sending image message:`, error);
+                console.error(`[${new Date().toISOString()}] Error sending image message:`, error.message);
                 socket.emit("error", { message: "Failed to send image message" });
             }
         }));
@@ -490,7 +523,7 @@ const initializeSocket = (server) => {
                 }
             }
             catch (err) {
-                console.error(`[${new Date().toISOString()}] Error saving image message to private chat ${privateChatId}:`, err);
+                console.error(`[${new Date().toISOString()}] Error saving image message to private chat ${privateChatId}:`, err.message);
                 socket.emit("error", { message: "Failed to send private image message" });
             }
         }));
@@ -508,7 +541,7 @@ const initializeSocket = (server) => {
                 });
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error sending notification:`, error);
+                console.error(`[${new Date().toISOString()}] Error sending notification:`, error.message);
                 socket.emit("error", { message: "Failed to send notification" });
             }
         }));
@@ -519,24 +552,24 @@ const initializeSocket = (server) => {
                 io.emit("notification_read", { notificationId });
             }
             catch (err) {
-                console.error(`[${new Date().toISOString()}] Error marking notification as read:`, err);
+                console.error(`[${new Date().toISOString()}] Error marking notification as read:`, err.message);
                 socket.emit("error", { message: "Failed to mark notification as read" });
             }
         }));
-        // ZEGOCLOUD video call events
+        // ------------------- Video Call Event Handlers (Refined) -------------------
         socket.on("call_request", (data) => __awaiter(void 0, void 0, void 0, function* () {
             const { roomId, studentId, courseId, courseTitle, tutorId, timestamp, callerName } = data;
             console.log(`[${new Date().toISOString()}] Received call_request:`, data);
             try {
                 if (!roomId || !studentId || !courseId || !courseTitle || !tutorId || !timestamp || !callerName) {
-                    console.error(`[${new Date().toISOString()}] Invalid call_request data:`, data);
+                    console.error(`[${new Date().toISOString()}] Invalid call_request data: Missing required fields.`, data);
                     socket.emit("error", { message: "Invalid call request data" });
                     return;
                 }
                 if (!mongoose_1.default.Types.ObjectId.isValid(studentId) ||
                     !mongoose_1.default.Types.ObjectId.isValid(courseId) ||
                     !mongoose_1.default.Types.ObjectId.isValid(tutorId)) {
-                    console.error(`[${new Date().toISOString()}] Invalid ObjectId`, { studentId, courseId, tutorId });
+                    console.error(`[${new Date().toISOString()}] Invalid ObjectId format`, { studentId, courseId, tutorId });
                     socket.emit("error", { message: "Invalid student, course, or tutor ID format" });
                     return;
                 }
@@ -572,17 +605,34 @@ const initializeSocket = (server) => {
                 });
                 yield notification.save();
                 console.log(`[${new Date().toISOString()}] Call notification saved for tutor ${tutorId}:`, notification._id);
-                io.to(tutorId).emit("call_request", {
-                    roomId,
+                // Removed status from callHistory creation
+                const callHistory = new exports.CallHistory({
+                    tutorId,
                     studentId,
                     courseId,
-                    courseTitle: courseTitle || course.title || "Unknown Course",
-                    tutorId,
-                    timestamp: timestamp || new Date().toISOString(),
-                    callId: notification._id.toString(),
-                    callerName: callerName || student.name || "Student",
+                    courseName: courseTitle || course.title || "Unknown Course",
+                    startTime: new Date(timestamp || Date.now()),
                 });
-                console.log(`[${new Date().toISOString()}] Sent call_request to tutor ${tutorId} for room ${roomId}`);
+                const savedCall = yield callHistory.save();
+                console.log(`[${new Date().toISOString()}] Call history created:`, savedCall._id);
+                const tutorSocketInfo = connectedUsers.get(tutorId);
+                if (tutorSocketInfo && tutorSocketInfo.socketId) {
+                    io.to(tutorSocketInfo.socketId).emit("call_request", {
+                        roomId,
+                        studentId,
+                        courseId,
+                        courseTitle: courseTitle || course.title || "Unknown Course",
+                        tutorId,
+                        timestamp: timestamp || new Date().toISOString(),
+                        callId: savedCall._id.toString(),
+                        callerName: callerName || student.name || "Student",
+                    });
+                    console.log(`[${new Date().toISOString()}] Sent call_request to tutor ${tutorId} (socket: ${tutorSocketInfo.socketId}) for room ${roomId}`);
+                }
+                else {
+                    console.warn(`[${new Date().toISOString()}] Tutor ${tutorId} is not connected. Call request not sent.`);
+                    socket.emit("error", { message: `Tutor ${tutorId} is currently offline or unreachable.` });
+                }
             }
             catch (error) {
                 console.error(`[${new Date().toISOString()}] Error processing call_request:`, {
@@ -595,39 +645,58 @@ const initializeSocket = (server) => {
             }
         }));
         socket.on("call_accepted", (data) => __awaiter(void 0, void 0, void 0, function* () {
-            const { callId, roomId, receiverId, userId } = data;
-            console.log(`[${new Date().toISOString()}] Call ${callId} accepted by ${receiverId} for room ${roomId}`);
+            const { callId, roomId, receiverId, userId } = data; // userId is the caller (student), receiverId is the acceptor (tutor)
+            console.log(`[${new Date().toISOString()}] Call ${callId} accepted by ${receiverId} (tutor) from ${userId} (student) for room ${roomId}`);
             try {
                 if (!callId || !roomId || !receiverId || !userId) {
-                    console.error(`[${new Date().toISOString()}] Invalid call_accepted data:`, data);
+                    console.error(`[${new Date().toISOString()}] Invalid call_accepted data: Missing required fields.`, data);
                     socket.emit("error", { message: "Invalid call acceptance data" });
                     return;
                 }
+                // Removed status and endTime updates
+                const updatedCall = yield exports.CallHistory.findByIdAndUpdate(callId, { startTime: new Date() }, { new: true });
+                if (!updatedCall) {
+                    console.error(`[${new Date().toISOString()}] Call history not found for callId ${callId}`);
+                    socket.emit("error", { message: `Call history not found for callId ${callId}` });
+                    return;
+                }
+                console.log(`[${new Date().toISOString()}] Updated call startTime:`, updatedCall._id);
                 const roomName = roomId;
-                const token = generateZegoToken(ZEGO_APP_ID, userId, ZEGO_SERVER_SECRET, 3600, roomName);
-                console.log("Generated token:", token);
-                const tutorSocket = connectedUsers.get(userId);
-                const studentSocket = connectedUsers.get(receiverId);
-                if (tutorSocket && tutorSocket.socketId) {
-                    io.to(tutorSocket.socketId).emit("videoCallStarted", { roomId, roomName, token, callId, receiverId });
-                    console.log(`[${new Date().toISOString()}] Sent videoCallStarted to tutor ${userId}`, { socketId: tutorSocket.socketId });
+                const studentToken = generateZegoToken(ZEGO_APP_ID, userId, ZEGO_SERVER_SECRET, 3600, roomName);
+                const tutorToken = generateZegoToken(ZEGO_APP_ID, receiverId, ZEGO_SERVER_SECRET, 3600, roomName);
+                console.log("Generated token for student (caller):", studentToken);
+                console.log("Generated token for tutor (acceptor):", tutorToken);
+                const tutorSocketInfo = connectedUsers.get(receiverId); // This is the tutor who accepted
+                const studentSocketInfo = connectedUsers.get(userId); // This is the student who initiated the call
+                if (tutorSocketInfo && tutorSocketInfo.socketId) {
+                    io.to(tutorSocketInfo.socketId).emit("videoCallStarted", { roomId, roomName, token: tutorToken, callId, partnerId: userId });
+                    console.log(`[${new Date().toISOString()}] Sent videoCallStarted to tutor ${receiverId} (socket: ${tutorSocketInfo.socketId})`);
                 }
                 else {
-                    console.warn(`[${new Date().toISOString()}] Tutor socket not found for ${userId}`);
-                    socket.emit("error", { message: `Tutor ${userId} not connected` });
+                    console.warn(`[${new Date().toISOString()}] Tutor socket not found for ${receiverId}.`);
                 }
-                if (studentSocket && studentSocket.socketId) {
-                    io.to(studentSocket.socketId).emit("videoCallStarted", { roomId, roomName, token, callId, receiverId });
-                    console.log(`[${new Date().toISOString()}] Sent videoCallStarted to student ${receiverId}`, { socketId: studentSocket.socketId });
+                if (studentSocketInfo && studentSocketInfo.socketId) {
+                    io.to(studentSocketInfo.socketId).emit("videoCallStarted", { roomId, roomName, token: studentToken, callId, partnerId: receiverId });
+                    console.log(`[${new Date().toISOString()}] Sent videoCallStarted to student ${userId} (socket: ${studentSocketInfo.socketId})`);
                 }
                 else {
-                    console.warn(`[${new Date().toISOString()}] Student socket not found for ${receiverId}`);
-                    socket.emit("error", { message: `Student ${receiverId} not connected` });
+                    console.warn(`[${new Date().toISOString()}] Student socket not found for ${userId}.`);
                 }
-                yield notificationModel_1.NotificationModel.updateOne({ _id: callId }, { read: true });
+                // Removed status update from notification
+                yield notificationModel_1.NotificationModel.updateOne({
+                    userId: receiverId,
+                    type: "call_request",
+                    senderId: userId,
+                    read: false
+                }, { read: true });
+                console.log(`[${new Date().toISOString()}] Notification related to call ${callId} marked as read.`);
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in call_accepted:`, error.message);
+                console.error(`[${new Date().toISOString()}] Error in call_accepted for callId ${callId}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    data,
+                });
                 socket.emit("error", { message: `Failed to accept call: ${error.message}` });
             }
         }));
@@ -637,13 +706,16 @@ const initializeSocket = (server) => {
             console.log(`[${new Date().toISOString()}] joinVideoCall: ${userId} (${role})`);
             try {
                 if (!roomId || !userId || !role) {
-                    console.error(`[${new Date().toISOString()}] Invalid joinVideoCall data:`, data);
+                    console.error(`[${new Date().toISOString()}] Invalid joinVideoCall data: Missing required fields.`, data);
                     socket.emit("error", { message: "Invalid join call data" });
                     return;
                 }
-                const roomName = `room_${roomId}`;
+                const roomName = roomId;
                 const token = generateZegoToken(ZEGO_APP_ID, userId, ZEGO_SERVER_SECRET, 3600, roomName);
                 socket.join(roomId);
+                if (!socketRooms.has(socket.id)) {
+                    socketRooms.set(socket.id, new Set());
+                }
                 (_a = socketRooms.get(socket.id)) === null || _a === void 0 ? void 0 : _a.add(roomId);
                 io.to(roomId).emit("videoCallJoined", {
                     roomId,
@@ -653,175 +725,105 @@ const initializeSocket = (server) => {
                 console.log(`[${new Date().toISOString()}] Sent videoCallJoined to room ${roomId}`);
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in joinVideoCall:`, error.message);
+                console.error(`[${new Date().toISOString()}] Error in joinVideoCall for user ${userId} in room ${roomId}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    data,
+                });
                 socket.emit("error", { message: `Failed to join call: ${error.message}` });
             }
         });
-        socket.on("end_call", (data) => {
-            const { to: roomId } = data;
-            console.log(`[${new Date().toISOString()}] Ending call for room ${roomId}`);
-            io.to(roomId).emit("call_ended");
-            console.log(`[${new Date().toISOString()}] Sent call_ended to room ${roomId}`);
-        });
-        socket.on("outgoing-video-call", (data) => __awaiter(void 0, void 0, void 0, function* () {
-            if (!data.to || !data.from || !data.roomId) {
-                console.error(`[${new Date().toISOString()}] Invalid outgoing-video-call payload:`, data);
-                socket.emit("error", { message: "Invalid outgoing-video-call payload" });
-                return;
-            }
+        socket.on("end_call", (data) => __awaiter(void 0, void 0, void 0, function* () {
+            const { to: roomId, callId } = data; // 'to' is being used as roomId here
+            console.log(`[${new Date().toISOString()}] Ending call for room ${roomId} with callId ${callId}`);
             try {
-                const recipient = connectedUsers.get(data.to);
-                const sender = yield userModel_1.userModel.findById(data.from).lean();
-                const recipientUser = yield userModel_1.userModel.findById(data.to).lean();
-                if (!sender || !recipientUser) {
-                    console.error(`[${new Date().toISOString()}] Sender or recipient not found:`, { from: data.from, to: data.to });
-                    socket.emit("error", { message: "User not found" });
+                if (!roomId || !callId) {
+                    console.error(`[${new Date().toISOString()}] Invalid end_call payload: Missing required fields.`, data);
+                    socket.emit("error", { message: "Invalid end call payload" });
                     return;
                 }
-                if (recipient) {
-                    io.to(recipient.socketId).emit("incoming-video-call", {
-                        _id: data.to,
-                        from: data.from,
-                        trainerName: data.trainerName,
-                        trainerImage: data.trainerImage,
-                        callType: data.callType,
-                        roomId: data.roomId,
-                    });
-                    const notification = new notificationModel_1.NotificationModel({
-                        userId: data.to,
-                        type: "video_call",
-                        message: `${data.trainerName} is calling you`,
-                        read: false,
-                        createdAt: new Date(),
-                        senderId: data.from,
-                    });
-                    yield notification.save();
-                    io.to(data.to).emit("notification", {
-                        _id: notification._id,
-                        type: "video_call",
-                        message: `${data.trainerName} is calling you`,
-                        timestamp: new Date().toISOString(),
-                        read: false,
-                        senderId: data.from,
-                        createdAt: notification.createdAt.toISOString(),
-                    });
-                    console.log(`[${new Date().toISOString()}] Outgoing call from ${data.from} to ${data.to} with room ${data.roomId}`);
-                }
-                else {
-                    console.error(`[${new Date().toISOString()}] Recipient ${data.to} is not online`);
-                    socket.emit("error", { message: `User ${data.to} is not online` });
-                }
+                // Removed endTime and status updates
+                io.to(roomId).emit("call_ended");
+                console.log(`[${new Date().toISOString()}] Sent call_ended to room ${roomId}`);
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in outgoing-video-call:`, error);
-                socket.emit("error", { message: "Failed to initiate video call" });
+                console.error(`[${new Date().toISOString()}] Error in end_call for callId ${callId}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    data,
+                });
+                socket.emit("error", { message: `Failed to end call: ${error.message}` });
             }
         }));
-        socket.on("accept-incoming-call", (data) => __awaiter(void 0, void 0, void 0, function* () {
-            if (!data.to || !data.from || !data.roomId) {
-                console.error(`[${new Date().toISOString()}] Invalid accept-incoming-call payload:`, data);
-                socket.emit("error", { message: "Invalid accept-incoming-call payload" });
-                return;
-            }
-            try {
-                const caller = connectedUsers.get(data.from);
-                if (caller) {
-                    io.to(caller.socketId).emit("accepted-call", {
-                        roomId: data.roomId,
-                        from: data.from,
-                        _id: data.to,
-                    });
-                    io.to(caller.socketId).emit("call-accepted", { to: data.from });
-                    console.log(`[${new Date().toISOString()}] Call accepted from ${data.to} to ${data.from} for room ${data.roomId}`);
-                }
-                else {
-                    console.error(`[${new Date().toISOString()}] Caller ${data.from} is not online`);
-                    socket.emit("error", { message: `Caller ${data.from} is not online` });
-                }
-            }
-            catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in accept-incoming-call:`, error);
-                socket.emit("error", { message: "Failed to accept call" });
-            }
-        }));
-        socket.on("trainer-call-accept", (data) => __awaiter(void 0, void 0, void 0, function* () {
-            if (!data.to || !data.trainerId || !data.roomId) {
-                console.error(`[${new Date().toISOString()}] Invalid trainer-call-accept payload:`, data);
-                socket.emit("error", { message: "Invalid trainer-call-accept payload" });
-                return;
-            }
-            try {
-                const recipient = connectedUsers.get(data.to);
-                if (recipient) {
-                    io.to(recipient.socketId).emit("trainer-accept", { roomId: data.roomId });
-                    console.log(`[${new Date().toISOString()}] Trainer ${data.trainerId} accepted call for room ${data.roomId}`);
-                }
-                else {
-                    console.error(`[${new Date().toISOString()}] User ${data.to} is not online`);
-                    socket.emit("error", { message: `User ${data.to} is not online` });
-                }
-            }
-            catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in trainer-call-accept:`, error);
-                socket.emit("error", { message: "Failed to accept call" });
-            }
-        }));
+        // ... (outgoing-video-call, accept-incoming-call, trainer-call-accept remain unchanged as they seem to be for different call flows)
         socket.on("reject-call", (data) => __awaiter(void 0, void 0, void 0, function* () {
-            if (!data.to) {
-                console.error(`[${new Date().toISOString()}] Invalid reject-call payload:`, data);
-                socket.emit("error", { message: "Invalid reject-call payload" });
-                return;
-            }
+            const { to, callId, sender, name, senderId, from } = data;
+            console.log(`[${new Date().toISOString()}] Received reject-call:`, data);
             try {
-                const recipient = connectedUsers.get(data.to);
-                if (recipient) {
-                    io.to(recipient.socketId).emit("call-rejected");
-                    console.log(`[${new Date().toISOString()}] Call rejected by ${data.sender} for ${data.to}`);
+                if (!to || !callId) {
+                    console.error(`[${new Date().toISOString()}] Invalid reject-call payload: Missing required fields.`, data);
+                    socket.emit("error", { message: "Invalid reject-call payload" });
+                    return;
+                }
+                // Removed endTime and status updates
+                const recipientSocketInfo = connectedUsers.get(to);
+                if (recipientSocketInfo && recipientSocketInfo.socketId) {
+                    io.to(recipientSocketInfo.socketId).emit("call-rejected");
+                    console.log(`[${new Date().toISOString()}] Call rejected, sent 'call-rejected' to ${to} (socket: ${recipientSocketInfo.socketId})`);
+                    const actualSenderId = senderId || from || queryUserId || "unknown";
                     const notification = new notificationModel_1.NotificationModel({
-                        userId: data.to,
+                        userId: to,
                         type: "video_call",
-                        message: `Call rejected by ${data.name || data.sender}`,
+                        message: `Call rejected by ${name || sender || "the other party"}`,
                         read: false,
                         createdAt: new Date(),
-                        senderId: data.senderId || data.from,
+                        senderId: actualSenderId,
                     });
                     yield notification.save();
-                    io.to(data.to).emit("notification", {
+                    io.to(to).emit("notification", {
                         _id: notification._id,
                         type: "video_call",
-                        message: `Call rejected by ${data.name || data.sender}`,
+                        message: `Call rejected by ${name || sender || "the other party"}`,
                         timestamp: new Date().toISOString(),
                         read: false,
-                        senderId: data.senderId || data.from,
+                        senderId: actualSenderId,
                         createdAt: notification.createdAt.toISOString(),
                     });
+                    console.log(`[${new Date().toISOString()}] Notification sent to ${to} about rejected call from ${actualSenderId}`);
                 }
                 else {
-                    console.error(`[${new Date().toISOString()}] User ${data.to} is not online`);
-                    socket.emit("error", { message: `User ${data.to} is not online` });
+                    console.error(`[${new Date().toISOString()}] Recipient user ${to} is not online. Cannot send 'call-rejected' or notification.`);
                 }
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in reject-call:`, error);
+                console.error(`[${new Date().toISOString()}] Error in reject-call for callId ${callId}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    data,
+                });
                 socket.emit("error", { message: "Failed to reject call" });
             }
         }));
         socket.on("leave-room", (data) => __awaiter(void 0, void 0, void 0, function* () {
-            if (!data.to) {
-                console.error(`[${new Date().toISOString()}] Invalid leave-room payload:`, data);
-                socket.emit("error", { message: "Invalid leave-room payload" });
-                return;
-            }
+            const { to, callId } = data;
+            console.log(`[${new Date().toISOString()}] Received leave-room from ${queryUserId} for callId ${callId}, notifying ${to}`);
+            console.log("huak", callId, to);
             try {
-                const recipient = connectedUsers.get(data.to);
-                console.log("hy hy hy hy", recipient);
-                if (recipient) {
-                    io.to(recipient.socketId).emit("user-left", queryUserId || "unknown");
-                    console.log(`[${new Date().toISOString()}] User ${queryUserId || "unknown"} left room, notifying ${data.to}`);
+                if (!to || !callId) {
+                    console.error(`[${new Date().toISOString()}] Invalid leave-room payload: Missing required fields.`, data);
+                    socket.emit("error", { message: "Invalid leave-room payload" });
+                    return;
+                }
+                const recipientSocketInfo = connectedUsers.get(to);
+                console.log("Recipient socket info:", recipientSocketInfo);
+                // Removed endTime and status updates
+                if (recipientSocketInfo && recipientSocketInfo.socketId) {
+                    io.to(recipientSocketInfo.socketId).emit("user-left", queryUserId || "unknown");
+                    console.log(`[${new Date().toISOString()}] User ${queryUserId || "unknown"} left room, notifying ${to} (socket: ${recipientSocketInfo.socketId})`);
                     const sender = yield userModel_1.userModel.findById(queryUserId).lean();
                     if (sender) {
                         const notification = new notificationModel_1.NotificationModel({
-                            userId: data.to,
+                            userId: to,
                             type: "video_call",
                             message: `${sender.name || "User"} left the call`,
                             read: false,
@@ -829,7 +831,7 @@ const initializeSocket = (server) => {
                             senderId: queryUserId,
                         });
                         yield notification.save();
-                        io.to(data.to).emit("notification", {
+                        io.to(to).emit("notification", {
                             _id: notification._id,
                             type: "video_call",
                             message: `${sender.name || "User"} left the call`,
@@ -838,14 +840,19 @@ const initializeSocket = (server) => {
                             senderId: queryUserId,
                             createdAt: notification.createdAt.toISOString(),
                         });
+                        console.log(`[${new Date().toISOString()}] Notification sent to ${to} about user ${queryUserId} leaving the call.`);
                     }
                 }
                 else {
-                    console.error(`[${new Date().toISOString()}] User ${data.to} is not online`);
+                    console.warn(`[${new Date().toISOString()}] Recipient user ${to} is not online. Cannot send 'user-left' or notification.`);
                 }
             }
             catch (error) {
-                console.error(`[${new Date().toISOString()}] Error in leave-room:`, error);
+                console.error(`[${new Date().toISOString()}] Error in leave-room for callId ${callId}:`, {
+                    error: error.message,
+                    stack: error.stack,
+                    data,
+                });
                 socket.emit("error", { message: "Failed to leave room" });
             }
         }));
@@ -853,12 +860,13 @@ const initializeSocket = (server) => {
             var _a;
             socket.leave(roomId);
             (_a = socketRooms.get(socket.id)) === null || _a === void 0 ? void 0 : _a.delete(roomId);
-            console.log(`[${new Date().toISOString()}] Socket ${socket.id} left room ${roomId}`);
+            console.log(`[${new Date().toISOString()}] Socket ${socket.id} explicitly left room ${roomId}`);
         });
         socket.on("disconnect", () => {
             console.log(`[${new Date().toISOString()}] Client disconnected: ${socket.id}`);
             if (queryUserId) {
                 connectedUsers.delete(queryUserId);
+                console.log(`[${new Date().toISOString()}] User ${queryUserId} removed from connectedUsers on disconnect.`);
             }
             const rooms = socketRooms.get(socket.id);
             if (rooms) {

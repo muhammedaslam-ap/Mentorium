@@ -555,22 +555,29 @@ export function CommunityChat() {
     }
   }, [inView, messages]);
 
-  const handleSelectCommunity = useCallback((community: Community) => {
+ const handleSelectCommunity = useCallback((community: Community) => {
+    if (selectedCommunity?.id === community.id) {
+      setIsSidebarOpen(false);
+      return;
+    }
+
     setSelectedCommunity(community);
     setMessages([]);
     setVisibleMessages([]);
-    processedMessageIds.current.clear(); // Clear processed messages for new community
+    processedMessageIds.current.clear();
     setIsSidebarOpen(false);
+
     if (socketRef.current?.connected && community.id !== currentCommunityId.current) {
       console.log("Emitting join_community on community select:", community.id);
       socketRef.current.emit("join_community", community.id);
       currentCommunityId.current = community.id;
       setIsLoadingMessages(true);
     }
+
     setCommunities((prev) =>
       prev.map((c) => (c.id === community.id ? { ...c, unreadCount: 0 } : c))
     );
-  }, []);
+  }, [selectedCommunity?.id]);
 
   const handleSendMessage = useCallback(() => {
     if (!newMessage.trim()) {

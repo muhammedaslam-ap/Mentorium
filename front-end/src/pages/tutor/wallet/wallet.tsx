@@ -162,42 +162,42 @@ const WalletPage = () => {
 
       // Fetch transactions
       let transactions: Transaction[] = [];
-      if (walletId) {
-        try {
-          console.log("Fetching /transaction/transaction-details with walletId:", walletId);
-          const transactionResponse = await authAxiosInstance.get("/transaction/transaction-details", {
-            params: {
-              walletId,
-              page: 1,
-              limit: 10, // Adjust limit as needed
-            },
-            signal: controller.signal,
-          });
-          console.log("Transaction Response:", JSON.stringify(transactionResponse.data, null, 2));
+if (walletId) {
+  try {
+    console.log("Fetching /transaction/transaction-details with walletId:", walletId);
+    const transactionResponse = await authAxiosInstance.get("/transaction/transaction-details", {
+      params: {
+        walletId,
+        page: 1,
+        limit: 10,
+      },
+      signal: controller.signal,
+    });
+    console.log("Transaction Response:", JSON.stringify(transactionResponse.data, null, 2));
 
-          if (transactionResponse.data?.success) {
-            transactions = transactionResponse.data.transactions.map((tx: any) => ({
-              _id: tx.transactionId,
-              amount: Number(tx.amount) || 0,
-              type: tx.transaction_type,
-              description: tx.description,
-              courseTitle: tx.description.match(/\(Course ID:\s*(.+?)\)/)?.[1] || "N/A",
-              studentName: tx.purchase_id.userId.name,
-              createdAt: tx.transaction_date || new Date().toISOString(),
-              status: "completed",
-            })) || [];
-          }
-        } catch (transactionError: any) {
-          console.error("Error fetching /transaction/transaction-details:", {
-            message: transactionError.message,
-            status: transactionError.response?.status,
-            data: transactionError.response?.data,
-          });
-          toast.error("Failed to load transaction history");
-        }
-      } else {
-        console.warn("No walletId available to fetch transactions");
-      }
+    if (transactionResponse.data?.success) {
+      transactions = transactionResponse.data.transactions.map((tx: any) => ({
+        _id: tx.transactionId,
+        amount: Number(tx.amount) || 0,
+        type: tx.transaction_type,
+        description: tx.description,
+        courseTitle: tx.purchase_id?.purchase?.[0]?.courseId?.title || "N/A",
+        studentName: tx.purchase_id?.userId?.name || "Unknown",
+        createdAt: tx.transaction_date || new Date().toISOString(),
+        status: "completed",
+      })) || [];
+    }
+  } catch (transactionError: any) {
+    console.error("Error fetching /transaction/transaction-details:", {
+      message: transactionError.message,
+      status: transactionError.response?.status,
+      data: transactionError.response?.data,
+    });
+    toast.error("Failed to load transaction history");
+  }
+} else {
+  console.warn("No walletId available to fetch transactions");
+}
 
       // Set sanitized wallet data
       setWalletData({

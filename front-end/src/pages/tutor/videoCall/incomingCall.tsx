@@ -93,27 +93,30 @@ function TutorIncomingVideocall() {
   }
 };
 
-  const handleRejectCall = async () => {
-    if (!incomingCall || !socket) {
-      console.error("No incoming call or missing socket");
-      toast.error("Cannot reject call.");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      socket.emit("call_rejected", {
-        callId: incomingCall.callId,
-        callerId: incomingCall.studentId,
-      });
-      dispatch(setShowIncomingCallTrainer(false));
-      setIncomingCall(null);
-    } catch (error) {
-      console.error("Error rejecting call:", error);
-      toast.error("Failed to reject call.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+ const handleRejectCall = async () => {
+  if (!incomingCall || !socket) {
+    console.error("No incoming call or missing socket");
+    toast.error("Cannot reject call.");
+    return;
+  }
+  setIsLoading(true);
+  try {
+    socket.emit("call_rejected", {
+      callId: incomingCall.callId,
+      callerId: incomingCall.studentId,
+    });
+
+    dispatch(setShowIncomingCallTrainer(false));
+    setIncomingCall(null);
+
+    window.location.reload();
+  } catch (error) {
+    console.error("Error rejecting call:", error);
+    toast.error("Failed to reject call.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   if (!incomingCall) return null;
 
