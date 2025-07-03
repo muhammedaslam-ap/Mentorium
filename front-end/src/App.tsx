@@ -128,6 +128,7 @@ function App() {
                       <TutorCallHistory />
                     </ProtectedTutorRoute>
                   }
+                  
                 />
                 {/* Student routes */}
                 <Route
