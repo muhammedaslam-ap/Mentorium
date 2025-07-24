@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { tutorService } from "../../../services/adminServices/tutorService"; // Adjust import path as needed
+import { tutorService } from "../../../services/adminServices/tutorService"; 
 import { Search, CheckCircle, XCircle, Ban } from "lucide-react";
 import { AdminLayout } from "../componets/AdminLayout";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { authAdminAxiosInstance } from "@/api/authAdminInstance";
 import { authAxiosInstance } from "@/api/authAxiosInstance";
+import axios, { Axios } from "axios";
 
 interface Tutor {
   _id: string;
@@ -117,7 +118,7 @@ export default function TutorsManagement() {
 
   const fetchDocumentPresignedUrl = async (tutorId: string) => {
     try {
-      const response = await authAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
+      const response = await axios.get(`https://api-mentorium.aslamap.tech/admin/tutors/${tutorId}/document`);
       return response.data.url;
     } catch (error: any) {
       console.error("Error fetching pre-signed URL:", error);
