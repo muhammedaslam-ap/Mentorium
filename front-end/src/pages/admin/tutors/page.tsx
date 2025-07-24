@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { authAdminAxiosInstance } from "@/api/authAdminInstance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { authAxiosInstance } from "@/api/authAxiosInstance";
 
 interface Tutor {
   _id: string;
@@ -120,7 +121,7 @@ export default function TutorsManagement() {
   const fetchDocumentPresignedUrl = async (tutorId: string) => {
     try {
       console.log("Fetching pre-signed URL for tutorId:", tutorId); // Debug log
-      const response = await authAdminAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
+      const response = await authAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
       console.log("Pre-signed URL response:", response.data); // Debug log
       return response.data.url;
     } catch (error: any) {
