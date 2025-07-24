@@ -47,6 +47,13 @@ export class AdminRoutes{
              (req: Request, res: Response) =>
                injectedAdminController.logoutAdmin(req, res)
            );
+
+           this.router.get(
+            "/tutors/:tutorId/document",
+            adminAuthMiddleware,
+            authorizeRole(["admin"]), 
+            (req: Request, res: Response) => injectedAdminController.getDocumentPresignedUrl(req, res)
+          );
     }
 }
 

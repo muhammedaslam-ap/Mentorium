@@ -102,16 +102,14 @@ export default function AuthForm({
 
     const handleLoginSubmit = (data: LoginFormData) => {
       const backendRole = getBackendRole(activeRole);
-    
       const endpoint = activeRole === "tutor" ? "/auth/tutor/login" : "/auth/user/login";
       console.log(endpoint)
 
-      authAxiosInstance
+      const res = authAxiosInstance
         .post(endpoint, { ...data, role: backendRole }) 
         .then((response) => {
           let { user } = response.data;
           user = { ...user, role: activeRole };
-    
           if (activeRole === "tutor") {
             dispatch(addTutor(user));
             navigate("/tutor/home");
@@ -126,6 +124,8 @@ export default function AuthForm({
         .catch((error) =>
           toast.error(error.response?.data?.message)
         );
+
+          console.log("redux data-------",res)
     };
     
     
@@ -152,7 +152,6 @@ export default function AuthForm({
       registerForm.reset();
       setIsRegistered(true);
 
-      // Switch to login tab after successful registration
       const tabsElement = document.querySelector('[data-state="inactive"][data-value="login"]') as HTMLElement;
       if (tabsElement) {
         tabsElement.click();

@@ -1,7 +1,7 @@
 import { RootState } from '@/redux/store';
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import {  useNavigate } from 'react-router-dom';
+import {  useLocation, useNavigate } from 'react-router-dom';
 
 interface ProtectedUserRouteProps {
   children: React.ReactNode;
@@ -28,19 +28,27 @@ export function ProtectedUserRoute({ children }: ProtectedUserRouteProps) {
 export function ProtectedTutorRoute({ children }: ProtectedUserRouteProps) {
   const tutor = useSelector((state: RootState) => state?.tutor?.tutorDatas);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!tutor) {
       navigate('/auth', { replace: true });
+    } else if (!tutor.isAccepted && location.pathname !== '/tutor/profile') {
+      navigate('/tutor/profile', { replace: true });
     }
-  }, [tutor, navigate]);
+  }, [tutor, navigate, location.pathname]);
 
   if (!tutor) {
-    return null; 
+    return null;
+  }
+
+  if (!tutor.isAccepted && location.pathname !== '/tutor/profile') {
+    return null;
   }
 
   return <>{children}</>;
 }
+
 
 
 export function ProtectedAdminRoute({ children }: ProtectedUserRouteProps) {

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -9,143 +9,223 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { tutorService } from "@/services/adminServices/tutorService"
-import { Search, CheckCircle, XCircle, Ban } from "lucide-react"
-import { AdminLayout } from "../componets/AdminLayout"
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { tutorService } from "../../../services/adminServices/tutorService"; // Adjust import path as needed
+import { Search, CheckCircle, XCircle, Ban } from "lucide-react";
+import { AdminLayout } from "../componets/AdminLayout";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { authAdminAxiosInstance } from "@/api/authAdminInstance";
 
 interface Tutor {
-  _id: string
-  name: string
-  email: string
-  isBlocked: boolean
-  approvalStatus: string | null
-  createdAt: string
+  _id: string;
+  name: string;
+  email: string;
+  isBlocked: boolean;
+  isAccepted?: boolean;
+  approvalStatus: string | null;
+  createdAt: string;
+  phone?: string;
+  specialization?: string;
+  bio?: string;
+  verificationDocUrl?: string; 
+  rejectionReason?: string;
 }
 
 interface PaginationInfo {
-  totalPages: number
-  currentPage: number
-  totalTutors: number
+  totalPages: number;
+  currentPage: number;
+  totalTutors: number;
+}
+
+interface UserListResponse {
+  success: boolean;
+  data: Tutor[];
+  totalPages: number;
+  currentPage: number;
+  totalTutors: number;
 }
 
 export default function TutorsManagement() {
-  const [tutors, setTutors] = useState<Tutor[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [tutors, setTutors] = useState<Tutor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState<PaginationInfo>({
     totalPages: 1,
     currentPage: 1,
     totalTutors: 0,
-  })
-  const [rowsPerPage, setRowsPerPage] = useState(10)
-
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null)
-  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false)
-  const [blockTutorId, setBlockTutorId] = useState<string | null>(null)
-  const [blockAction, setBlockAction] = useState<boolean | null>(null)
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
-  const [approveTutorId, setApproveTutorId] = useState<string | null>(null)
+  });
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+  const [blockTutorId, setBlockTutorId] = useState<string | null>(null);
+  const [blockAction, setBlockAction] = useState<boolean | null>(null);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [approveTutorId, setApproveTutorId] = useState<string | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const fetchTutors = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await tutorService.userList(pagination.currentPage, rowsPerPage, searchQuery)
-      setTutors(data.data || [])
+      const data = await tutorService.userList(pagination.currentPage, rowsPerPage, searchQuery);
+      console.log("Fetched tutors with all data:", data);
+      setTutors(data.data || []);
       setPagination({
         totalPages: data.totalPages || 1,
         currentPage: data.currentPage || 1,
         totalTutors: data.totalTutors || 0,
-      })
-    } catch (error) {
-      console.error("Failed to fetch tutors:", error)
+      });
+    } catch (error: any) {
+      console.error("Failed to fetch tutors:", error);
+      toast.error(error.response?.data?.message || "Failed to load tutors");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchTutors()
-  }, [pagination.currentPage, rowsPerPage, searchQuery])
+    fetchTutors();
+  }, [pagination.currentPage, rowsPerPage, searchQuery]);
+
+  const handleViewDetails = (tutorId: string) => {
+    console.log("Attempting to view details for tutorId:", tutorId);
+    setDetailsLoading(true);
+    try {
+      const tutor = tutors.find((t) => t._id === tutorId);
+      if (tutor) {
+        console.log("Found tutor for modal:", tutor);
+        setSelectedTutor(tutor);
+        setIsDetailsDialogOpen(true);
+      } else {
+        console.error("Tutor not found in local data:", tutorId);
+        toast.error("Tutor details not available");
+      }
+    } catch (error: any) {
+      console.error("Error preparing tutor details:", error);
+      toast.error("Error loading tutor details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const fetchDocumentPresignedUrl = async (tutorId: string) => {
+    try {
+      const response = await authAdminAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
+      return response.data.url;
+    } catch (error: any) {
+      console.error("Error fetching pre-signed URL:", error);
+      toast.error("Failed to load document URL");
+      return null;
+    }
+  };
+
+  const handleDocumentClick = async (tutorId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    const presignedUrl = await fetchDocumentPresignedUrl(tutorId);
+    if (presignedUrl) {
+      window.open(presignedUrl, "_blank");
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setPagination((prev) => ({ ...prev, currentPage: 1 }))
-    fetchTutors()
-  }
+    e.preventDefault();
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    fetchTutors();
+  };
 
   const handlePageChange = (newPage: number) => {
     if (newPage > 0 && newPage <= pagination.totalPages) {
-      setPagination((prev) => ({ ...prev, currentPage: newPage }))
+      setPagination((prev) => ({ ...prev, currentPage: newPage }));
     }
-  }
+  };
 
   const handleBlockTutor = async (tutorId: string, currentBlockedStatus: boolean) => {
     try {
-      await tutorService.blockTutor(tutorId, !currentBlockedStatus)
-      setTutors(tutors.map((tutor) => (tutor._id === tutorId ? { ...tutor, isBlocked: !currentBlockedStatus } : tutor)))
+      await tutorService.blockTutor(tutorId, !currentBlockedStatus);
+      setTutors(tutors.map((tutor) =>
+        tutor._id === tutorId ? { ...tutor, isBlocked: !currentBlockedStatus } : tutor
+      ));
+      if (selectedTutor?._id === tutorId) {
+        setSelectedTutor({ ...selectedTutor, isBlocked: !currentBlockedStatus });
+      }
     } catch (error) {
-      console.error("Failed to update tutor status:", error)
+      console.error("Failed to update tutor status:", error);
+      toast.error("Failed to update tutor status");
     }
-  }
+  };
 
   const openBlockDialog = (tutorId: string, currentBlockedStatus: boolean) => {
-    setBlockTutorId(tutorId)
-    setBlockAction(!currentBlockedStatus)
-    setIsBlockDialogOpen(true)
-  }
+    setBlockTutorId(tutorId);
+    setBlockAction(!currentBlockedStatus);
+    setIsBlockDialogOpen(true);
+  };
 
   const confirmBlockTutor = async () => {
     if (blockTutorId && blockAction !== null) {
-      await handleBlockTutor(blockTutorId, !blockAction)
-      setIsBlockDialogOpen(false)
+      await handleBlockTutor(blockTutorId, !blockAction);
+      setIsBlockDialogOpen(false);
     }
-  }
+  };
 
   const handleApproveTutor = async (tutorId: string) => {
     try {
-      await tutorService.tutorApproval(tutorId)
-      setTutors(tutors.map((tutor) => (tutor._id === tutorId ? { ...tutor, approvalStatus: 'approved' } : tutor)))
+      await tutorService.tutorApproval(tutorId);
+      setTutors(tutors.map((tutor) =>
+        tutor._id === tutorId ? { ...tutor, approvalStatus: "approved", isAccepted: true } : tutor
+      ));
+      if (selectedTutor?._id === tutorId) {
+        setSelectedTutor({ ...selectedTutor, approvalStatus: "approved", isAccepted: true });
+      }
     } catch (error) {
-      console.error("Failed to approve tutor:", error)
+      console.error("Failed to approve tutor:", error);
+      toast.error("Failed to approve tutor");
     }
-  }
+  };
 
   const openApproveDialog = (tutorId: string) => {
-    setApproveTutorId(tutorId)
-    setIsApproveDialogOpen(true)
-  }
+    setApproveTutorId(tutorId);
+    setIsApproveDialogOpen(true);
+  };
 
   const confirmApproveTutor = async () => {
     if (approveTutorId) {
-      await handleApproveTutor(approveTutorId)
-      setIsApproveDialogOpen(false)
+      await handleApproveTutor(approveTutorId);
+      setIsApproveDialogOpen(false);
     }
-  }
-
-  const openRejectDialog = (tutorId: string) => {
-    setSelectedTutorId(tutorId)
-    setRejectionReason("")
-    setIsRejectDialogOpen(true)
-  }
+  };
 
   const handleRejectTutor = async () => {
     if (!selectedTutorId || !rejectionReason.trim()) {
-      return
+      toast.error("Please provide a rejection reason");
+      return;
     }
-
     try {
-      await tutorService.tutorReject(selectedTutorId, rejectionReason)
-      setTutors(tutors.map((tutor) => (tutor._id === selectedTutorId ? { ...tutor, approvalStatus: 'rejected' } : tutor)))
-      setIsRejectDialogOpen(false)
+      await tutorService.tutorReject(selectedTutorId, rejectionReason);
+      setTutors(tutors.map((tutor) =>
+        tutor._id === selectedTutorId
+          ? { ...tutor, approvalStatus: "rejected", isAccepted: false, rejectionReason }
+          : tutor
+      ));
+      if (selectedTutor?._id === selectedTutorId) {
+        setSelectedTutor({ ...selectedTutor, approvalStatus: "rejected", isAccepted: false, rejectionReason });
+      }
+      setIsRejectDialogOpen(false);
     } catch (error) {
-      console.error("Failed to reject tutor:", error)
+      console.error("Failed to reject tutor:", error);
+      toast.error("Failed to reject tutor");
     }
-  }
+  };
+
+  const openRejectDialog = (tutorId: string) => {
+    setSelectedTutorId(tutorId);
+    setIsRejectDialogOpen(true);
+  };
 
   return (
     <AdminLayout>
@@ -221,11 +301,11 @@ export default function TutorsManagement() {
                         <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
                           Blocked
                         </Badge>
-                      ) : tutor.approvalStatus === 'approved' ? (
+                      ) : tutor.approvalStatus === "approved" ? (
                         <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
                           Approved
                         </Badge>
-                      ) : tutor.approvalStatus === 'rejected' ? (
+                      ) : tutor.approvalStatus === "rejected" ? (
                         <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
                           Rejected
                         </Badge>
@@ -237,7 +317,7 @@ export default function TutorsManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        {tutor.approvalStatus === 'pending' && (
+                        {tutor.approvalStatus === "pending" && (
                           <>
                             <Button
                               size="sm"
@@ -263,6 +343,15 @@ export default function TutorsManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 border-violet-200 text-violet-600 hover:bg-violet-100 hover:text-violet-700"
+                          onClick={() => handleViewDetails(tutor._id)}
+                          disabled={detailsLoading}
+                        >
+                          {detailsLoading && selectedTutor?._id === tutor._id ? "Loading..." : "View Details"}
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -324,6 +413,81 @@ export default function TutorsManagement() {
           </div>
         </div>
       </div>
+
+      {/* Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-violet-900">{selectedTutor?.name}'s Profile</DialogTitle>
+            <DialogDescription className="text-violet-600">
+              View the complete profile details of the tutor.
+            </DialogDescription>
+          </DialogHeader>
+          {detailsLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600"></div>
+            </div>
+          ) : selectedTutor ? (
+            <div className="space-y-4 py-4">
+              <div>
+                <Label className="text-violet-900">Name</Label>
+                <p className="text-sm text-violet-600">{selectedTutor.name}</p>
+              </div>
+              <div>
+                <Label className="text-violet-900">Email</Label>
+                <p className="text-sm text-violet-600">{selectedTutor.email}</p>
+              </div>
+              <div>
+                <Label className="text-violet-900">Phone</Label>
+                <p className="text-sm text-violet-600">{selectedTutor.phone || "N/A"}</p>
+              </div>
+              <div>
+                <Label className="text-violet-900">Specialization</Label>
+                <p className="text-sm text-violet-600">{selectedTutor.specialization || "N/A"}</p>
+              </div>
+              <div>
+                <Label className="text-violet-900">Bio</Label>
+                <p className="text-sm text-violet-600">{selectedTutor.bio || "N/A"}</p>
+              </div>
+              <div>
+                <Label className="text-violet-900">Verification Document</Label>
+                {selectedTutor.verificationDocUrl ? (
+                  <a
+                    href="#"
+                    onClick={(e) => handleDocumentClick(selectedTutor._id, e)}
+                    className="text-violet-600 hover:underline"
+                  >
+                    View Document
+                  </a>
+                ) : (
+                  <p className="text-sm text-violet-600">N/A</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-violet-900">Approval Status</Label>
+                <p className="text-sm text-violet-600">{selectedTutor.approvalStatus || "N/A"}</p>
+              </div>
+              {selectedTutor.rejectionReason && (
+                <div>
+                  <Label className="text-violet-900">Rejection Reason</Label>
+                  <p className="text-sm text-violet-600">{selectedTutor.rejectionReason}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-violet-600">No tutor data available</p>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDetailsDialogOpen(false)}
+              className="border-violet-200 text-violet-700 hover:bg-violet-100"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Rejection Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
@@ -416,5 +580,5 @@ export default function TutorsManagement() {
         </DialogContent>
       </Dialog>
     </AdminLayout>
-  )
+  );
 }

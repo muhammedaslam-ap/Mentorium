@@ -21,8 +21,6 @@ export type PurchaseHistoryItem = {
 }
 
 
-// types/transaction.ts
-// types/transaction.ts
 
 export type TTransactionAdmin = {
   balance: number;

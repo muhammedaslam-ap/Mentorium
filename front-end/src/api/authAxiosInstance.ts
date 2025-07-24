@@ -65,14 +65,12 @@ authAxiosInstance.interceptors.response.use(
         isRefreshing = true;
         try {
           const refreshResponse = await authAxiosInstance.post('/auth/refresh-token');
-          const { token } = refreshResponse.data; // Assuming the new token is in the response
-          // Update the Authorization header for subsequent requests
+          const { token } = refreshResponse.data;
           authAxiosInstance.defaults.headers['Authorization'] = `Bearer ${token}`;
           isRefreshing = false;
-          return authAxiosInstance(originalRequest); // Retry original request with new token
+          return authAxiosInstance(originalRequest);
         } catch (refreshError) {
           isRefreshing = false;
-          // Clear appropriate slice and localStorage based on user type
           if (isUser) {
             store.dispatch(removeUser());
             localStorage.removeItem('userDatas');

@@ -6,9 +6,12 @@ import {
   SUCCESS_MESSAGES,
 } from "../shared/constant";
 import { IAdminService } from "../interfaces/serviceInterface/IadminServices";
+import { TutorService } from "../services/tutorServices";
 
 export class AdminController {
-  constructor(private _adminService: IAdminService) {}
+  constructor(private _adminService: IAdminService,
+              private _tutorService:TutorService
+  ) {}
 
   async logoutAdmin(req: Request, res: Response) {
     try {
@@ -109,6 +112,35 @@ export class AdminController {
         .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
+
+
+
+
+  async getDocumentPresignedUrl(req: Request, res: Response): Promise<void> {
+    try {
+      const tutorId = req.params.tutorId; 
+      console.log(`Generating pre-signed URL for tutorId: ${tutorId}`);
+
+      const profile = await this._tutorService.getTutorProfile(tutorId);
+      if (!profile || !profile.verificationDocUrl) {
+        console.log(`No document found for tutorId: ${tutorId}`,profile);
+        res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+        return;
+      }
+
+      const urlParts = profile.verificationDocUrl.split("/");
+      const key = urlParts.slice(3).join("/");
+      console.log(`Generating pre-signed URL for key: ${key}`);
+
+      const presignedUrl = await this._tutorService.getPresignedUrl(key);
+      console.log(`Pre-signed URL generated: ${presignedUrl}`);
+      res.status(HTTP_STATUS.OK).json({ url: presignedUrl, message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS });
+    } catch (error: any) {
+      console.error("Error generating pre-signed URL:", error.message);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+    }
+  }
+
 
   async updateStatus(req: Request, res: Response) {
     try {

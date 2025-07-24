@@ -160,18 +160,22 @@ export function Header() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (isAccepted === false) {
-      toast.info("Please complete your profile verification to access all features.", {
-        action: {
-          label: "Update Profile",
-          onClick: () => navigate("/tutor/profile"),
-        },
-        duration: 10000,
-        closeButton: true,
-      });
-    }
-  }, [isAccepted, navigate]);
+    useEffect(() => {
+      if (isAccepted === false) {
+        toast.info(
+          "Your tutor profile is either under verification or has been rejected.",
+          {
+            action: {
+              label: "View Profile",
+              onClick: () => navigate("/tutor/profile"),
+            },
+            duration: 10000,
+            closeButton: true,
+          }
+        );
+      }
+    }, [isAccepted, navigate]);
+
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {

@@ -1,9 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider, useSelector } from "react-redux";
 import { Toaster } from "sonner";
-
 import { RootState, store } from "./redux/store";
-
 import AuthForm from "./pages/authForm";
 import { NotFound } from "./pages/404pageNotFound";
 import Index from "./pages/student/home";
@@ -45,7 +43,7 @@ import { AppProvider } from "./provider/AppProvider";
 import PurchaseHistoryPage from "./pages/student/purchase-History/purchase";
 import TutorProfile from "./pages/student/tutor/tutorProfile";
 import { SocketContextProvider } from "./provider/socket";
-import TrainerVideoCall from "./pages/tutor/videoCall/outGoingCall"; // Ensure this path matches
+import TrainerVideoCall from "./pages/tutor/videoCall/outGoingCall";
 import AdminWalletPage from "./pages/admin/wallet/page";
 import LearningPathPage from "./pages/student/learningPath";
 import AboutPage from "./pages/student/about";
@@ -64,8 +62,8 @@ function VideoCallHandler() {
     <>
       {videoCall && <OutgoingVideocallPage />}
       {showIncomingVideoCall?._id && <IncomingVideocallPage />}
-      {showIncomingCallTrainer && <TutorIncomingVideocall />} 
-      {showVideoCallTrainer && <TrainerVideoCall />} 
+      {showIncomingCallTrainer && <TutorIncomingVideocall />}
+      {showVideoCallTrainer && <TrainerVideoCall />}
       {showVideoCallUser && <VideoCallPage />}
     </>
   );
@@ -79,7 +77,6 @@ function App() {
         position="top-right"
         toastOptions={{ className: "text-sm p-0" }}
       />
-
       <Provider store={store}>
         <SocketContextProvider>
           <AppProvider>
@@ -97,22 +94,12 @@ function App() {
                 />
                 <Route
                   path="/paths"
-                  element={
-                    // <PublicUserRoute>
-                      <LearningPathPage />
-                    // </PublicUserRoute>
-                  }
+                  element={<LearningPathPage />}
                 />
-
                 <Route
                   path="/about"
-                  element={
-                    // <PublicUserRoute>
-                      <AboutPage />
-                    // </PublicUserRoute>
-                  }
+                  element={<AboutPage />}
                 />
-
                 <Route
                   path="/tutor/home"
                   element={
@@ -128,9 +115,7 @@ function App() {
                       <TutorCallHistory />
                     </ProtectedTutorRoute>
                   }
-                  
                 />
-                {/* Student routes */}
                 <Route
                   path="/student/home"
                   element={
@@ -147,7 +132,7 @@ function App() {
                     </ProtectedUserRoute>
                   }
                 />
-                 <Route
+                <Route
                   path="/student/callHistory"
                   element={
                     <ProtectedUserRoute>
@@ -222,7 +207,6 @@ function App() {
                     </ProtectedUserRoute>
                   }
                 />
-                {/* Tutor routes */}
                 <Route
                   path="/tutor/courses"
                   element={
@@ -263,7 +247,6 @@ function App() {
                     </ProtectedTutorRoute>
                   }
                 />
-                {/* Lesson Management Routes */}
                 <Route
                   path="/tutor/courses/:courseId/lessons"
                   element={
@@ -288,7 +271,6 @@ function App() {
                     </ProtectedTutorRoute>
                   }
                 />
-                {/* Quiz Management Routes */}
                 <Route
                   path="/tutor/courses/:courseId/lessons/quiz/add"
                   element={
@@ -305,7 +287,14 @@ function App() {
                     </ProtectedTutorRoute>
                   }
                 />
-                {/* Admin Routes */}
+                <Route
+                  path="/tutor/profile"
+                  element={
+                    <ProtectedTutorRoute>
+                      <TutorProfilePage />
+                    </ProtectedTutorRoute>
+                  }
+                />
                 <Route
                   path="/admin/login"
                   element={
@@ -346,16 +335,6 @@ function App() {
                     </ProtectedAdminRoute>
                   }
                 />
-                {/* Tutor Profile Route */}
-                <Route
-                  path="/tutor/profile"
-                  element={
-                    <ProtectedTutorRoute>
-                      <TutorProfilePage />
-                    </ProtectedTutorRoute>
-                  }
-                />
-                {/* Catch-all route for 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Router>

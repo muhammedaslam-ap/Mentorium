@@ -57,7 +57,7 @@ export class AuthController {
       const data = req.body;
   
       const { user, accessToken, refreshToken } = await this._authService.loginUser(data);
-  
+      console.warn("redux data",user)
       setAuthCookies(
         res,
         accessToken,
@@ -68,7 +68,7 @@ export class AuthController {
   
       res.status(HTTP_STATUS.OK).json({
         message: SUCCESS_MESSAGES.LOGIN_SUCCESS,
-        user: { id: user._id, username: user.name, role: user.role },
+        user: { id: user._id, username: user.name, role: user.role ,isAccepted : user.isAccepted},
       });
     } catch (error) {
       if (error instanceof CustomError) {

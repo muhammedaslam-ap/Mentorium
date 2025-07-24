@@ -12,7 +12,7 @@ export const setAuthCookies = (
   res.cookie(accessTokenName, accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax", // adjust for dev vs prod
+    sameSite: isProduction ? "none" : "lax", 
     path: "/",
     maxAge:  2 * 60 * 60 * 1000 , 
   });
@@ -36,7 +36,7 @@ export const updateCookieWithAccessToken = (
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
     path: "/",
-    maxAge: 1 * 60 * 1000, // 15 minutes
+    maxAge: 1 * 60 * 1000,
   });
 };
 
