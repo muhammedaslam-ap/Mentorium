@@ -33,7 +33,7 @@ export function ProtectedTutorRoute({ children }: ProtectedUserRouteProps) {
   useEffect(() => {
     if (!tutor) {
       navigate('/auth', { replace: true });
-    } else if (!tutor.isAccepted && location.pathname !== '/tutor/profile') {
+    } else if (tutor.isAccepted === false) {
       navigate('/tutor/profile', { replace: true });
     }
   }, [tutor, navigate, location.pathname]);
