@@ -48,6 +48,18 @@ export const tutorService = {
     }
   },
 
+  async getAdminDocumentPresignedUrl(tutorId: string): Promise<string | null> {
+  try {
+    const response = await authAdminAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
+    console.log("Pre-signed URL response:", response.data);
+    return response.data.url;
+  } catch (error: any) {
+    console.error("Error fetching admin document URL:", error.response?.data || error.message);
+    toast.error("Failed to load document URL: " + (error.response?.data?.message || error.message));
+    return null;
+  }
+},
+
   async tutorReject(tutorToReject: string, rejectionReason: string) {
     try {
       await authAdminAxiosInstance.patch(`/admin/${tutorToReject}/reject`, {

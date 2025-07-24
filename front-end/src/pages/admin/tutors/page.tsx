@@ -17,9 +17,8 @@ import { Search, CheckCircle, XCircle, Ban } from "lucide-react";
 import { AdminLayout } from "../componets/AdminLayout";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { authAdminAxiosInstance } from "@/api/authAdminInstance";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { authAxiosInstance } from "@/api/authAxiosInstance";
+import { Card } from "antd";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Tutor {
   _id: string;
@@ -121,12 +120,12 @@ export default function TutorsManagement() {
   const fetchDocumentPresignedUrl = async (tutorId: string) => {
     try {
       console.log("Fetching pre-signed URL for tutorId:", tutorId); // Debug log
-      const response = await authAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
-      console.log("Pre-signed URL response:", response.data); // Debug log
-      return response.data.url;
+      const url = await tutorService.getAdminDocumentPresignedUrl(tutorId); // Use new service method
+      console.log("Pre-signed URL response:", { url }); // Debug log
+      return url;
     } catch (error: any) {
-      console.error("Error fetching pre-signed URL:", error.response?.data || error.message);
-      toast.error("Failed to load document URL: " + (error.response?.data?.message || error.message));
+      console.error("Error fetching pre-signed URL:", error);
+      toast.error("Failed to load document URL: " + (error.message || "An unexpected error occurred"));
       return null;
     }
   };

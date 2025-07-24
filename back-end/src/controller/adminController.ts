@@ -121,15 +121,16 @@ export class AdminController {
       const tutorId = req.params.tutorId; 
       console.log(`Generating pre-signed URL for tutorId: ${tutorId}`);
 
-      const profile = await this._tutorService.getTutorProfile(tutorId);
+     const profile = await this._tutorService.getTutorProfile(tutorId);
+
       if (!profile || !profile.verificationDocUrl) {
-        console.log(`No document found for tutorId: ${tutorId}`,profile);
+        console.log(`No document found for tutorId: ${tutorId}`);
         res.status(HTTP_STATUS.NOT_FOUND).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
         return;
       }
 
-      const urlParts = profile.verificationDocUrl.split("/");
-      const key = urlParts.slice(3).join("/");
+      const urlParts = profile.verificationDocUrl.split('/');
+      const key = urlParts.slice(3).join('/');
       console.log(`Generating pre-signed URL for key: ${key}`);
 
       const presignedUrl = await this._tutorService.getPresignedUrl(key);
