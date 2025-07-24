@@ -12,14 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { tutorService } from "../../../services/adminServices/tutorService"; 
+import { tutorService } from "@/services/adminServices/tutorService"; // Adjust import path as needed
 import { Search, CheckCircle, XCircle, Ban } from "lucide-react";
 import { AdminLayout } from "../componets/AdminLayout";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { authAdminAxiosInstance } from "@/api/authAdminInstance";
-import { authAxiosInstance } from "@/api/authAxiosInstance";
-import axios, { Axios } from "axios";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Tutor {
   _id: string;
@@ -32,7 +31,7 @@ interface Tutor {
   phone?: string;
   specialization?: string;
   bio?: string;
-  verificationDocUrl?: string; 
+  verificationDocUrl?: string; // This will be a path or pre-signed URL
   rejectionReason?: string;
 }
 
@@ -71,6 +70,8 @@ export default function TutorsManagement() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
   const fetchTutors = async () => {
     setLoading(true);
@@ -118,21 +119,34 @@ export default function TutorsManagement() {
 
   const fetchDocumentPresignedUrl = async (tutorId: string) => {
     try {
-      const response = await axios.get(`https://api-mentorium.aslamap.tech/admin/tutors/${tutorId}/document`);
+      console.log("Fetching pre-signed URL for tutorId:", tutorId); // Debug log
+      const response = await authAdminAxiosInstance.get(`/admin/tutors/${tutorId}/document`);
+      console.log("Pre-signed URL response:", response.data); // Debug log
       return response.data.url;
     } catch (error: any) {
-      console.error("Error fetching pre-signed URL:", error);
-      toast.error("Failed to load document URL");
+      console.error("Error fetching pre-signed URL:", error.response?.data || error.message);
+      toast.error("Failed to load document URL: " + (error.response?.data?.message || error.message));
       return null;
     }
   };
 
   const handleDocumentClick = async (tutorId: string, event: React.MouseEvent) => {
     event.preventDefault();
+    console.log("Attempting to open document for tutorId:", tutorId); // Debug log
     const presignedUrl = await fetchDocumentPresignedUrl(tutorId);
     if (presignedUrl) {
-      window.open(presignedUrl, "_blank");
+      setDocumentUrl(presignedUrl);
+      setIsDocumentModalOpen(true);
     }
+  };
+
+  const handleCloseDocumentModal = () => {
+    setIsDocumentModalOpen(false);
+    setDocumentUrl(null);
+  };
+
+  const isImage = (url: string) => {
+    return url.match(/\.(jpeg|jpg|png)$/i);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -490,6 +504,45 @@ export default function TutorsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Document Modal */}
+      {isDocumentModalOpen && documentUrl && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" role="dialog" aria-labelledby="document-modal-title" aria-modal="true">
+          <Card className="bg-white dark:bg-gray-800 max-w-3xl w-full mx-4 max-h-[80vh] overflow-auto border-violet-100 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50 flex justify-between items-center">
+              <CardTitle id="document-modal-title" className="text-violet-800">
+                Verification Document
+              </CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCloseDocumentModal}
+                className="text-violet-600 hover:text-violet-800 p-1"
+                aria-label="Close document modal"
+              >
+                <XCircle className="h-6 w-6" />
+              </Button>
+            </CardHeader>
+            <CardContent className="p-6">
+              {isImage(documentUrl) ? (
+                <img
+                  src={documentUrl}
+                  alt="Verification document"
+                  className="w-full h-auto max-h-[60vh] object-contain"
+                  onError={() => toast.error("Failed to load document image")}
+                />
+              ) : (
+                <iframe
+                  src={documentUrl}
+                  title="Verification document"
+                  className="w-full h-[60vh] border-0"
+                  onError={() => toast.error("Failed to load document PDF")}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Rejection Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
