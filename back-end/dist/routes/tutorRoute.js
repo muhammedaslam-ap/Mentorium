@@ -13,6 +13,7 @@ class TutorRoutes {
     }
     initializeRoutes() {
         this.router.post('/profile', userAuthMiddleware_1.userAuthMiddleware, (0, userAuthMiddleware_1.authorizeRole)(['tutor']), checkUserBlocked_1.checkUserBlocked, S3_uploader_1.verificationUploadMiddleware, (req, res) => tutorInjection_1.injectedTutorController.addTutorProfile(req, res));
+        this.router.post('/profile/direct', S3_uploader_1.verificationUploadMiddleware, (req, res) => tutorInjection_1.injectedTutorController.addTutorProfileWithoutAuth(req, res));
         this.router.get('/profile', userAuthMiddleware_1.userAuthMiddleware, (0, userAuthMiddleware_1.authorizeRole)(['tutor']), checkUserBlocked_1.checkUserBlocked, (req, res) => tutorInjection_1.injectedTutorController.getTutorProfile(req, res));
         this.router.get("/notifications", userAuthMiddleware_1.userAuthMiddleware, (0, userAuthMiddleware_1.authorizeRole)(["tutor", "student"]), checkUserBlocked_1.checkUserBlocked, (req, res) => {
             console.log("Fetching notifications 3");

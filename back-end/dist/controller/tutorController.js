@@ -101,6 +101,57 @@ class TutorController {
             }
         });
     }
+    addTutorProfileWithoutAuth(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { tutorId, name, specialization, phone, bio } = req.body;
+                if (!tutorId) {
+                    res.status(constant_1.HTTP_STATUS.BAD_REQUEST).json({
+                        message: constant_1.ERROR_MESSAGES.MISSING_PARAMETERS,
+                    });
+                    return;
+                }
+                if (!specialization || !phone || !req.file) {
+                    res.status(constant_1.HTTP_STATUS.BAD_REQUEST).json({
+                        message: constant_1.ERROR_MESSAGES.INCOMPLETE_INFO,
+                    });
+                    return;
+                }
+                const file = req.file;
+                const verificationDocUrl = file.location;
+                const key = file.key;
+                console.log(`Verifying S3 file existence for key: ${key} (URL: ${verificationDocUrl})`);
+                try {
+                    yield s3Client.send(new client_s3_1.HeadObjectCommand({
+                        Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+                        Key: key,
+                    }));
+                    console.log(`File verified in S3: ${key}`);
+                }
+                catch (error) {
+                    console.error(`Failed to verify S3 file: ${key}`, error);
+                    res.status(constant_1.HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: constant_1.ERROR_MESSAGES.SERVER_ERROR });
+                    return;
+                }
+                const profileData = {
+                    name,
+                    specialization,
+                    phone,
+                    bio,
+                    verificationDocUrl,
+                };
+                yield this.tutorService.addTutorProfile(tutorId, profileData, verificationDocUrl);
+                res.status(constant_1.HTTP_STATUS.CREATED).json({
+                    message: constant_1.SUCCESS_MESSAGES.CREATED,
+                    document: verificationDocUrl,
+                });
+            }
+            catch (error) {
+                console.error('Error adding tutor profile (no auth):', error.message);
+                res.status(constant_1.HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: constant_1.ERROR_MESSAGES.SERVER_ERROR });
+            }
+        });
+    }
     addTutorProfile(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;

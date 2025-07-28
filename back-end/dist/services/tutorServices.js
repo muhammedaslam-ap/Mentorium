@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TutorService = void 0;
 const aws_sdk_1 = require("aws-sdk");
 const client_s3_1 = require("@aws-sdk/client-s3");
+const userModel_1 = require("../models/userModel");
 const s3Client = new client_s3_1.S3Client({
     region: process.env.AWS_REGION || 'ap-south-1',
     credentials: {
@@ -50,20 +51,19 @@ class TutorService {
     updateTutorProfile(tutorId, profileData, file) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!tutorId) {
-                console.error('updateTutorProfile - Tutor ID is required');
-                throw new Error('Tutor ID is required');
+                console.error("updateTutorProfile - Tutor ID is required");
+                throw new Error("Tutor ID is required");
             }
-            const updateData = Object.assign({}, profileData);
+            const updateData = Object.assign(Object.assign({}, profileData), { approvalStatus: "pending", rejectionReason: "" });
             let newVerificationDocUrl;
             let newKey;
             let oldKey;
             if (file) {
                 newVerificationDocUrl = file.location;
                 newKey = file.key;
-                console.log(`Verifying new S3 file:---------- ${newKey} (URL:-------------- ${newVerificationDocUrl})`);
                 try {
                     yield s3Client.send(new client_s3_1.HeadObjectCommand({
-                        Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+                        Bucket: process.env.S3_BUCKET_NAME || "mentorium",
                         Key: newKey,
                     }));
                     console.log(`New file verified in S3: ${newKey}`);
@@ -78,9 +78,8 @@ class TutorService {
                         verificationDocUrl: currentProfile === null || currentProfile === void 0 ? void 0 : currentProfile.verificationDocUrl,
                     });
                     if (currentProfile === null || currentProfile === void 0 ? void 0 : currentProfile.verificationDocUrl) {
-                        const urlParts = currentProfile.verificationDocUrl.split('/');
-                        oldKey = urlParts.slice(3).join('/');
-                        console.log(`Old S3 file to delete:------------ ${oldKey}`);
+                        const urlParts = currentProfile.verificationDocUrl.split("/");
+                        oldKey = urlParts.slice(3).join("/");
                     }
                 }
                 catch (error) {
@@ -91,11 +90,12 @@ class TutorService {
             console.log(`Preparing to update profile for tutorId: -----${tutorId}`, { updateData });
             try {
                 yield this.tutorRepository.updateTutorProfile(tutorId, updateData);
+                yield userModel_1.userModel.updateOne({ _id: tutorId }, { isAccepted: false });
                 console.log(`Profile updated successfully for tutorId:------------ ${tutorId}`, { updateData });
                 if (oldKey && newVerificationDocUrl) {
                     try {
                         yield s3Client.send(new client_s3_1.DeleteObjectCommand({
-                            Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+                            Bucket: process.env.S3_BUCKET_NAME || "mentorium",
                             Key: oldKey,
                         }));
                         console.log(`Deleted old S3 file: ${oldKey}`);
@@ -110,7 +110,7 @@ class TutorService {
                 if (newKey) {
                     try {
                         yield s3Client.send(new client_s3_1.DeleteObjectCommand({
-                            Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+                            Bucket: process.env.S3_BUCKET_NAME || "mentorium",
                             Key: newKey,
                         }));
                         console.log(`Deleted new S3 file due to update failure: ${newKey}`);

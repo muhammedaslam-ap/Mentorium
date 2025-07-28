@@ -33,6 +33,7 @@ const reviewRoute_1 = require("./routes/reviewRoute");
 const videoCallRoute_1 = __importDefault(require("./routes/videoCallRoute"));
 const callHistoryRoute_1 = require("./routes/callHistoryRoute");
 const notificationRoute_1 = require("./routes/notificationRoute");
+const messageRoute_1 = require("./routes/messageRoute");
 (0, connectDb_1.connectDB)();
 cloudinary_1.v2.config({
     cloud_name: process.env.CLOUDINARY_NAME,
@@ -72,6 +73,7 @@ try {
     app.use("/transaction", new transactionRoute_1.TransactionRoutes().router);
     app.use("/reviews", new reviewRoute_1.ReviewRoutes().router);
     app.use('/', new callHistoryRoute_1.CallHistoryRoute().router);
+    app.use('/users', new messageRoute_1.MessageRoutes().router);
     app.use('/notification', new notificationRoute_1.NotificationRoute().router);
     app.use("/api", videoCallRoute_1.default);
 }

@@ -6,7 +6,7 @@ const setAuthCookies = (res, accessToken, refreshToken, accessTokenName, refresh
     res.cookie(accessTokenName, accessToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: isProduction ? "none" : "lax", // adjust for dev vs prod
+        sameSite: isProduction ? "none" : "lax",
         path: "/",
         maxAge: 2 * 60 * 60 * 1000,
     });
@@ -15,7 +15,7 @@ const setAuthCookies = (res, accessToken, refreshToken, accessTokenName, refresh
         secure: isProduction,
         sameSite: isProduction ? "none" : "lax",
         path: "/",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 };
 exports.setAuthCookies = setAuthCookies;
@@ -25,7 +25,7 @@ const updateCookieWithAccessToken = (res, accessToken, accessTokenName) => {
         secure: isProduction,
         sameSite: isProduction ? "none" : "lax",
         path: "/",
-        maxAge: 1 * 60 * 1000, // 15 minutes
+        maxAge: 1 * 60 * 1000,
     });
 };
 exports.updateCookieWithAccessToken = updateCookieWithAccessToken;

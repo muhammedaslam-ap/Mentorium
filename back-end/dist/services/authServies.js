@@ -41,7 +41,8 @@ class AuthService {
                 isBlocked: false,
                 isAccepted: data.role === "tutor" ? false : true,
             };
-            yield this._userRepository.createUser(newUser);
+            const newuser = yield this._userRepository.createUser(newUser);
+            return newuser;
         });
     }
     loginUser(data) {

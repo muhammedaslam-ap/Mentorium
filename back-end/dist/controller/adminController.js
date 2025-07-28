@@ -13,8 +13,9 @@ exports.AdminController = void 0;
 const custom_error_1 = require("../utils/custom.error");
 const constant_1 = require("../shared/constant");
 class AdminController {
-    constructor(_adminService) {
+    constructor(_adminService, _tutorService) {
         this._adminService = _adminService;
+        this._tutorService = _tutorService;
     }
     logoutAdmin(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -120,6 +121,30 @@ class AdminController {
                 res
                     .status(constant_1.HTTP_STATUS.INTERNAL_SERVER_ERROR)
                     .json({ success: false, message: constant_1.ERROR_MESSAGES.SERVER_ERROR });
+            }
+        });
+    }
+    getDocumentPresignedUrl(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const tutorId = req.params.tutorId;
+                console.log(`Generating pre-signed URL for tutorId: ${tutorId}`);
+                const profile = yield this._tutorService.getTutorProfile(tutorId);
+                if (!profile || !profile.verificationDocUrl) {
+                    console.log(`No document found for tutorId: ${tutorId}`);
+                    res.status(constant_1.HTTP_STATUS.NOT_FOUND).json({ message: constant_1.ERROR_MESSAGES.USER_NOT_FOUND });
+                    return;
+                }
+                const urlParts = profile.verificationDocUrl.split('/');
+                const key = urlParts.slice(3).join('/');
+                console.log(`Generating pre-signed URL for key: ${key}`);
+                const presignedUrl = yield this._tutorService.getPresignedUrl(key);
+                console.log(`Pre-signed URL generated: ${presignedUrl}`);
+                res.status(constant_1.HTTP_STATUS.OK).json({ url: presignedUrl, message: constant_1.SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS });
+            }
+            catch (error) {
+                console.error("Error generating pre-signed URL:", error.message);
+                res.status(constant_1.HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: constant_1.ERROR_MESSAGES.SERVER_ERROR });
             }
         });
     }

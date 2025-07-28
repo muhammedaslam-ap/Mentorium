@@ -25,10 +25,12 @@ class AuthController {
                 if (data.role == "tutor") {
                     data = Object.assign(Object.assign({}, data), { isAccepted: false });
                 }
-                yield this._authService.registerUser(data);
+                const user = yield this._authService.registerUser(data);
+                console.log("new user here", user);
                 res.status(constant_1.HTTP_STATUS.CREATED).json({
                     success: true,
                     message: constant_1.SUCCESS_MESSAGES.REGISTRATION_SUCCESS,
+                    tutorId: user._id
                 });
             }
             catch (error) {
@@ -50,10 +52,11 @@ class AuthController {
             try {
                 const data = req.body;
                 const { user, accessToken, refreshToken } = yield this._authService.loginUser(data);
+                console.warn("redux data", user);
                 (0, cookieHelper_1.setAuthCookies)(res, accessToken, refreshToken, `${data.role}AccessToken`, `${data.role}RefreshToken`);
                 res.status(constant_1.HTTP_STATUS.OK).json({
                     message: constant_1.SUCCESS_MESSAGES.LOGIN_SUCCESS,
-                    user: { id: user._id, username: user.name, role: user.role },
+                    user: { id: user._id, username: user.name, role: user.role, isAccepted: user.isAccepted },
                 });
             }
             catch (error) {
@@ -138,6 +141,7 @@ class AuthController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const userId = req.params.userId;
+                console.log("hhh", userId);
                 if (!userId) {
                     return res.status(400).json({ message: "userId is required in route params" });
                 }

@@ -45,7 +45,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeSocket = exports.CallHistory = void 0;
+exports.initializeSocket = exports.MessageModel = exports.CallHistory = void 0;
 const socket_io_1 = require("socket.io");
 const mongoose_1 = __importStar(require("mongoose"));
 const tutorServices_1 = require("../services/tutorServices");
@@ -88,15 +88,24 @@ const callHistorySchema = new mongoose_1.default.Schema({
 callHistorySchema.index({ tutorId: 1, studentId: 1, startTime: -1 });
 exports.CallHistory = mongoose_1.default.model('CallHistory', callHistorySchema);
 const messageSchema = new mongoose_1.Schema({
-    communityId: { type: String },
     privateChatId: { type: String },
     sender: { type: String, required: true },
     content: { type: String, default: "" },
     timestamp: { type: String, required: true },
-    status: { type: String, enum: ["sent", "delivered", "read"], default: "sent" },
+    status: {
+        type: String,
+        enum: ["sent", "delivered", "read"],
+        default: "sent",
+    },
     imageUrl: { type: String, default: "" },
+    reactions: [
+        {
+            userId: { type: String, required: true },
+            emoji: { type: String, required: true }
+        }
+    ]
 });
-const MessageModel = mongoose_1.default.model("Message", messageSchema);
+exports.MessageModel = mongoose_1.default.model("Message", messageSchema);
 const tutorRepository = new tutorRepository_1.TutorRepository();
 const tutorService = new tutorServices_1.TutorService(tutorRepository);
 // Map to track rooms each socket is in
@@ -105,7 +114,7 @@ const connectedUsers = new Map();
 const fetchPrivateChats = (tutorId, socket) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         console.log(`[${new Date().toISOString()}] Fetching private chats for tutor ${tutorId}`);
-        const messages = yield MessageModel.find({
+        const messages = yield exports.MessageModel.find({
             privateChatId: { $regex: `private_.*_.*_${tutorId}$` },
         })
             .sort({ timestamp: -1 })
@@ -279,7 +288,7 @@ const initializeSocket = (server) => {
                 socket.join(communityId);
                 (_a = socketRooms.get(socket.id)) === null || _a === void 0 ? void 0 : _a.add(communityId);
                 console.log(`[${new Date().toISOString()}] User ${socket.id} joined community: ${communityId}`);
-                const messages = yield MessageModel.find({ communityId })
+                const messages = yield exports.MessageModel.find({ communityId })
                     .sort({ timestamp: 1 })
                     .limit(50)
                     .lean();
@@ -297,7 +306,8 @@ const initializeSocket = (server) => {
             (_b = socketRooms.get(socket.id)) === null || _b === void 0 ? void 0 : _b.add(privateChatId);
             console.log(`[${new Date().toISOString()}] User ${socket.id} joined private chat ${privateChatId}`);
             try {
-                const messages = yield MessageModel.find({ privateChatId })
+                const messages = yield exports.MessageModel.find({ privateChatId })
+                    .select("sender content timestamp status imageUrl courseId studentId tutorId courseTitle studentName reactions") // Updated to include reactions
                     .sort({ timestamp: 1 })
                     .limit(50)
                     .lean();
@@ -318,7 +328,7 @@ const initializeSocket = (server) => {
                 return;
             }
             try {
-                const newMessage = new MessageModel({
+                const newMessage = new exports.MessageModel({
                     communityId,
                     sender: message.sender,
                     content: message.content,
@@ -334,7 +344,7 @@ const initializeSocket = (server) => {
                     timestamp: newMessage.timestamp,
                     status: newMessage.status,
                 });
-                yield MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
+                yield exports.MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
                 io.to(communityId).emit("receive_message", Object.assign(Object.assign({}, newMessage.toObject()), { status: "delivered" }));
             }
             catch (error) {
@@ -346,7 +356,7 @@ const initializeSocket = (server) => {
             const { courseId, studentId, tutorId, message } = data;
             const privateChatId = `private_${courseId}_${studentId}_${tutorId}`;
             try {
-                const newMessage = new MessageModel({
+                const newMessage = new exports.MessageModel({
                     privateChatId,
                     sender: message.sender,
                     content: message.content,
@@ -369,7 +379,7 @@ const initializeSocket = (server) => {
                     courseTitle: (course === null || course === void 0 ? void 0 : course.title) || "Unknown Course",
                     studentName: (student === null || student === void 0 ? void 0 : student.name) || "Unknown Student",
                 });
-                yield MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
+                yield exports.MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
                 io.to(privateChatId).emit("receive_private_message", Object.assign(Object.assign({}, newMessage.toObject()), { status: "delivered", courseId,
                     studentId,
                     tutorId, courseTitle: (course === null || course === void 0 ? void 0 : course.title) || "Unknown Course", studentName: (student === null || student === void 0 ? void 0 : student.name) || "Unknown Student" }));
@@ -429,7 +439,7 @@ const initializeSocket = (server) => {
             }
             try {
                 const imageUrl = image.data;
-                const newMessage = new MessageModel({
+                const newMessage = new exports.MessageModel({
                     communityId,
                     sender: message.sender,
                     content: "",
@@ -447,7 +457,7 @@ const initializeSocket = (server) => {
                     status: newMessage.status,
                     imageUrl: newMessage.imageUrl,
                 });
-                yield MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
+                yield exports.MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
                 io.to(communityId).emit("receive_message", Object.assign(Object.assign({}, newMessage.toObject()), { status: "delivered" }));
             }
             catch (error) {
@@ -460,7 +470,7 @@ const initializeSocket = (server) => {
             const privateChatId = `private_${courseId}_${studentId}_${tutorId}`;
             try {
                 const imageUrl = image.data;
-                const newMessage = new MessageModel({
+                const newMessage = new exports.MessageModel({
                     privateChatId,
                     sender: data.message.sender,
                     content: data.message.content,
@@ -485,7 +495,7 @@ const initializeSocket = (server) => {
                     courseTitle: (course === null || course === void 0 ? void 0 : course.title) || "Unknown Course",
                     studentName: (student === null || student === void 0 ? void 0 : student.name) || "Unknown Student",
                 });
-                yield MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
+                yield exports.MessageModel.updateOne({ _id: newMessage._id }, { status: "delivered" });
                 io.to(privateChatId).emit("receive_private_message", Object.assign(Object.assign({}, newMessage.toObject()), { status: "delivered", courseId,
                     studentId,
                     tutorId, courseTitle: (course === null || course === void 0 ? void 0 : course.title) || "Unknown Course", studentName: (student === null || student === void 0 ? void 0 : student.name) || "Unknown Student" }));

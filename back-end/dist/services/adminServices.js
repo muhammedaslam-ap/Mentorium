@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
+const notificationModel_1 = require("../models/notificationModel");
 class AdminService {
     constructor(_userRepository, _tutorRepository) {
         this._userRepository = _userRepository;
@@ -18,6 +19,13 @@ class AdminService {
     acceptTutor(tutorId) {
         return __awaiter(this, void 0, void 0, function* () {
             yield this._userRepository.acceptTutor(tutorId);
+            yield notificationModel_1.NotificationModel.create({
+                userId: tutorId,
+                type: "approval",
+                message: "Your tutor profile has been approved.",
+                read: false,
+                createdAt: new Date(),
+            });
         });
     }
     updateRejectedReason(id, reason) {

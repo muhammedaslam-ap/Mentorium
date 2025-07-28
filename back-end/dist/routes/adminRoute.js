@@ -18,6 +18,7 @@ class AdminRoutes {
         this.router.patch("/:id/status", adminAuthMiddleware_1.adminAuthMiddleware, (0, userAuthMiddleware_1.authorizeRole)(["admin"]), (req, res) => adminInjection_1.injectedAdminController.updateStatus(req, res));
         // Logout
         this.router.post("/logout", adminAuthMiddleware_1.adminAuthMiddleware, (0, userAuthMiddleware_1.authorizeRole)(["admin"]), (req, res) => adminInjection_1.injectedAdminController.logoutAdmin(req, res));
+        this.router.get("/tutors/:tutorId/document", adminAuthMiddleware_1.adminAuthMiddleware, (0, userAuthMiddleware_1.authorizeRole)(["admin"]), (req, res) => adminInjection_1.injectedAdminController.getDocumentPresignedUrl(req, res));
     }
 }
 exports.AdminRoutes = AdminRoutes;
