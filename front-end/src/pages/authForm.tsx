@@ -181,11 +181,14 @@ export default function AuthForm({
 
       const res = await userAuthService.registerUser({ ...data, role: backendRole });
 
-      console.log("✅ user id here:", res.tutorId, res);
+      console.log("✅ Full API response:", res); // Log the entire response for debugging
 
       const tutorId = res?.tutorId;
       if (tutorId) {
+        console.log("Storing tutorId:", tutorId);
         localStorage.setItem("tutorId", tutorId);
+      } else {
+        console.warn("tutorId is undefined in the response:", res);
       }
 
       // Redirect based on role
@@ -206,7 +209,11 @@ export default function AuthForm({
       }
     } catch (error) {
       if (error instanceof AxiosError) {
+        console.error("Registration error at", new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }), ":", error.response?.data || error.message);
         toast.error(error.response?.data?.message || "Registration failed");
+      } else {
+        console.error("Unexpected registration error at", new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }), ":", error);
+        toast.error("An unexpected error occurred during registration.");
       }
     }
   };
