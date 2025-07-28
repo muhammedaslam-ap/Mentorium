@@ -6,6 +6,7 @@ import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/clien
 import { MulterS3File } from '../types/multer';
 import  TNotification  from '../types/notification';
 import { TStudent } from '../types/user';
+import { userModel } from '../models/userModel';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -44,13 +45,23 @@ export class TutorService {
     });
   }
 
-  async updateTutorProfile(tutorId: string | undefined, profileData: Partial<TTutorProfileInput>, file?: MulterS3File) {
+
+  async updateTutorProfile(
+    tutorId: string | undefined,
+    profileData: Partial<TTutorProfileInput>,
+    file?: MulterS3File
+  ) {
     if (!tutorId) {
-      console.error('updateTutorProfile - Tutor ID is required');
-      throw new Error('Tutor ID is required');
+      console.error("updateTutorProfile - Tutor ID is required");
+      throw new Error("Tutor ID is required");
     }
 
-    const updateData: Partial<TTutorProfileInput> = { ...profileData };
+   const updateData: Partial<TTutorProfileInput> = {
+     ...profileData,
+    approvalStatus: "pending",
+    rejectionReason: "", 
+  };
+
     let newVerificationDocUrl: string | undefined;
     let newKey: string | undefined;
     let oldKey: string | undefined;
@@ -59,11 +70,10 @@ export class TutorService {
       newVerificationDocUrl = file.location;
       newKey = file.key;
 
-      console.log(`Verifying new S3 file:---------- ${newKey} (URL:-------------- ${newVerificationDocUrl})`);
       try {
         await s3Client.send(
           new HeadObjectCommand({
-            Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+            Bucket: process.env.S3_BUCKET_NAME || "mentorium",
             Key: newKey,
           })
         );
@@ -78,10 +88,10 @@ export class TutorService {
         console.log(`Current profile for tutorId: ${tutorId}`, {
           verificationDocUrl: currentProfile?.verificationDocUrl,
         });
+
         if (currentProfile?.verificationDocUrl) {
-          const urlParts = currentProfile.verificationDocUrl.split('/');
-          oldKey = urlParts.slice(3).join('/');
-          console.log(`Old S3 file to delete:------------ ${oldKey}`);
+          const urlParts = currentProfile.verificationDocUrl.split("/");
+          oldKey = urlParts.slice(3).join("/");
         }
       } catch (error: any) {
         console.error(`Failed to fetch current profile for tutorId: ${tutorId}`, error);
@@ -94,13 +104,16 @@ export class TutorService {
 
     try {
       await this.tutorRepository.updateTutorProfile(tutorId, updateData);
+
+      await userModel.updateOne({ _id: tutorId }, { isAccepted: false });
+
       console.log(`Profile updated successfully for tutorId:------------ ${tutorId}`, { updateData });
 
       if (oldKey && newVerificationDocUrl) {
         try {
           await s3Client.send(
             new DeleteObjectCommand({
-              Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+              Bucket: process.env.S3_BUCKET_NAME || "mentorium",
               Key: oldKey,
             })
           );
@@ -111,11 +124,12 @@ export class TutorService {
       }
     } catch (error: any) {
       console.error(`Failed to update tutor profile for tutorId: ${tutorId}`, error);
+
       if (newKey) {
         try {
           await s3Client.send(
             new DeleteObjectCommand({
-              Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+              Bucket: process.env.S3_BUCKET_NAME || "mentorium",
               Key: newKey,
             })
           );
@@ -124,9 +138,12 @@ export class TutorService {
           console.error(`Failed to delete new S3 file: ${newKey}`, deleteError);
         }
       }
+
       throw new Error(`Failed to update tutor profile: ${error.message}`);
     }
   }
+
+
 
   async  getEnrolledStudent(
        tutorId: string

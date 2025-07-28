@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { CustomRequest } from '../middlewares/userAuthMiddleware';
-import { TTutorProfileInput } from '../types/tutor';
+import { TTutorProfileInput, TutorProfileRequest } from '../types/tutor';
 import { MulterS3File } from '../types/multer';
 import { TutorService } from '../services/tutorServices';
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
@@ -91,6 +91,63 @@ export class TutorController {
         .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
     }
   }
+
+async addTutorProfileWithoutAuth(req: TutorProfileRequest, res: Response): Promise<void> {
+  try {
+    const { tutorId, name, specialization, phone, bio } = req.body;
+
+    if (!tutorId) {
+       res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: ERROR_MESSAGES.MISSING_PARAMETERS,
+      });
+      return
+    }
+
+    if (!specialization || !phone || !req.file) {
+       res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: ERROR_MESSAGES.INCOMPLETE_INFO,
+      });
+      return
+    }
+
+    const file = req.file as MulterS3File ;
+    const verificationDocUrl = file.location;
+    const key = file.key
+      console.log(`Verifying S3 file existence for key: ${key} (URL: ${verificationDocUrl})`);
+      try {
+        await s3Client.send(
+          new HeadObjectCommand({
+            Bucket: process.env.S3_BUCKET_NAME || 'mentorium',
+            Key: key,
+          })
+        );
+        console.log(`File verified in S3: ${key}`);
+      } catch (error: any) {
+        console.error(`Failed to verify S3 file: ${key}`, error);
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+        return;
+      }
+    const profileData: TTutorProfileInput = {
+      name,
+      specialization,
+      phone,
+      bio,
+      verificationDocUrl,
+    };
+
+    await this.tutorService.addTutorProfile(tutorId, profileData, verificationDocUrl);
+
+    res.status(HTTP_STATUS.CREATED).json({
+      message: SUCCESS_MESSAGES.CREATED,
+      document: verificationDocUrl,
+    });
+
+  } catch (error: any) {
+    console.error('Error adding tutor profile (no auth):', error.message);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: ERROR_MESSAGES.SERVER_ERROR });
+  }
+}
+
 
   async addTutorProfile(req: CustomRequest, res: Response): Promise<void> {
     try {

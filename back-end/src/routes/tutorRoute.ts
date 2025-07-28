@@ -7,6 +7,7 @@ import {
 import { checkUserBlocked } from '../middlewares/checkUserBlocked';
 import {verificationUploadMiddleware} from '../middlewares/S3.uploader';
 import { injectedTutorController } from '../di/tutorInjection';
+import { TutorProfileRequest } from '../types/tutor';
 
 export class TutorRoutes {
   public router: Router;
@@ -26,6 +27,14 @@ export class TutorRoutes {
       (req: Request, res: Response) =>
         injectedTutorController.addTutorProfile(req as CustomRequest, res)
     );
+    
+    this.router.post(
+    '/profile/direct',
+      verificationUploadMiddleware,
+      (req: Request, res: Response) =>
+        injectedTutorController.addTutorProfileWithoutAuth(req as TutorProfileRequest, res)
+    );
+
 
     this.router.get(
       '/profile',

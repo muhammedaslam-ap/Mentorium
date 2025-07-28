@@ -10,6 +10,7 @@ import {
   TUserModel,
   TUserRegister,
   TUserWithProfile,
+  TUserDocument
 } from "../types/user";
 import { comparePassword, hashPassword } from "../utils/bcrypt";
 import { CustomError } from "../utils/custom.error";
@@ -22,7 +23,7 @@ export class AuthService implements IAuthService {
     private _jwtService:ITokenService
   ) {}
 
-  async registerUser(data: TUserRegister): Promise<void> {
+  async registerUser(data: TUserRegister): Promise<TUserModel> {
     const existingUser = await this._userRepository.findByEmail(data.email);
 
     if (existingUser) {
@@ -49,7 +50,8 @@ export class AuthService implements IAuthService {
       isAccepted: data.role === "tutor" ? false : true,
     };
 
-    await this._userRepository.createUser(newUser);
+    const newuser = await this._userRepository.createUser(newUser);
+    return newuser
   }
 
   async loginUser(data: TUserLogin): Promise<{ user: TUserModel, accessToken: string, refreshToken: string }> {

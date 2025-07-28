@@ -5,7 +5,7 @@ export class BaseRepository<TDoc extends Document, TCreate = Partial<Omit<TDoc, 
 
   async create(data: TCreate): Promise<TDoc> {
     const createdItem = await this.model.create(data);
-    return createdItem;
+    return createdItem as TDoc ;
   }
 
   async findById(id: string): Promise<TDoc | null> {

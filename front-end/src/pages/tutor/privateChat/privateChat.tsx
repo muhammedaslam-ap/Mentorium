@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Menu, Check, CheckCheck, Image, MessageSquare, Smile } from "lucide-react";
+import { Send, Menu, Check, CheckCheck, Image, MessageSquare, Smile, MoreVertical, Trash2, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
@@ -8,8 +8,8 @@ import SideBar from "../components/sideBar";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useSelector } from "react-redux";
 import { profileService } from "@/services/userServices/profileService";
-// import { RootState } from "@/redux/store";
-import Picker from "emoji-picker-react"; // Import emoji picker
+import { messageService } from "@/services/messageServices/messageServices";
+import Picker from "emoji-picker-react";
 
 interface Chat {
   privateChatId: string;
@@ -37,6 +37,7 @@ interface Message {
   tutorId: string;
   courseTitle: string;
   studentName: string;
+  reactions?: string;
 }
 
 export function MessagesPage() {
@@ -51,11 +52,12 @@ export function MessagesPage() {
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const processedMessageIds = useRef<Set<string>>(new Set()); // Track processed messages
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State for emoji picker visibility
+  const processedMessageIds = useRef<Set<string>>(new Set());
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
   const { tutorId, tutorName } = useSelector((state: any) => ({
-    tutorId: state.tutor.tutorDatas?.id || state.tutor.tutorDatas?._id ,
+    tutorId: state.tutor.tutorDatas?.id || state.tutor.tutorDatas?._id,
     tutorName: state.tutor.tutorDatas?.username || "Unknown",
   }));
 
@@ -228,7 +230,6 @@ export function MessagesPage() {
         return;
       }
 
-      // Clear processed messages to reset for new history
       processedMessageIds.current.clear();
 
       const mappedHistory = history.map((msg) => {
@@ -246,16 +247,16 @@ export function MessagesPage() {
           tutorId: tutorId!,
           courseTitle: selectedChat.courseTitle,
           studentName: selectedChat.studentName,
+          reactions: msg.reactions || undefined, // Ensure reaction is included
         };
-        // Add to processed messages
         if (mappedMsg._id) {
           processedMessageIds.current.add(mappedMsg._id);
         }
         return mappedMsg;
       });
 
-      console.log("Mapped message history:", mappedHistory);
-      setMessages([...mappedHistory]);
+      console.log("Mapped message history with reactions:", mappedHistory);
+      setMessages(mappedHistory);
       console.log("Updated messages state with history:", mappedHistory);
     });
 
@@ -263,7 +264,6 @@ export function MessagesPage() {
       console.log("Received private message:", message);
       const privateChatId = `private_${message.courseId}_${message.studentId}_${message.tutorId}`;
 
-      // Skip if message is already processed
       if (message._id && processedMessageIds.current.has(message._id)) {
         console.log("Skipping duplicate message with _id:", message._id);
         return;
@@ -324,7 +324,7 @@ export function MessagesPage() {
         updatedChats.sort(
           (a, b) =>
             new Date(b.latestMessage?.timestamp || 0).getTime() -
-            new Date(a.latestMessage?.timestamp || 0).getTime()
+              new Date(a.latestMessage?.timestamp || 0).getTime()
         );
 
         return updatedChats;
@@ -403,6 +403,7 @@ export function MessagesPage() {
   const handleSelectChat = (chat: Chat) => {
     setSelectedChat(chat);
     setIsChatListOpen(false);
+    setDropdownOpen(null);
     setChats((prev) =>
       prev.map((c) => (c.privateChatId === chat.privateChatId ? { ...c, unreadCount: 0 } : c))
     );
@@ -524,7 +525,49 @@ export function MessagesPage() {
 
   const handleEmojiClick = (emojiData: any) => {
     setNewMessage((prev) => prev + emojiData.emoji);
-    setShowEmojiPicker(false); // Optionally hide picker after selection
+    setShowEmojiPicker(false);
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await messageService.deleteMessage(messageId);
+      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+      setDropdownOpen(null);
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+    }
+  };
+
+  const handleReactToMessage = async (messageId: string) => {
+    try {
+      await messageService.reactToMessage(messageId, "❤️");
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId ? { ...msg, reaction: "❤️" } : msg
+        )
+      );
+      setDropdownOpen(null);
+    } catch (error) {
+      console.error("Failed to react to message:", error);
+    }
+  };
+
+  const handleRemoveReaction = async (messageId: string) => {
+    try {
+      await messageService.removeReaction(messageId);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId ? { ...msg, reaction: undefined } : msg
+        )
+      );
+      setDropdownOpen(null);
+    } catch (error) {
+      console.error("Failed to remove reaction:", error);
+    }
+  };
+
+  const toggleDropdown = (messageId: string) => {
+    setDropdownOpen((prev) => (prev === messageId ? null : messageId));
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -671,7 +714,7 @@ export function MessagesPage() {
                           <div
                             key={message._id || message.timestamp}
                             className={cn(
-                              "flex w-full gap-2 items-end animate-fade-in",
+                              "flex w-full gap-2 items-end animate-fade-in relative",
                               message.sender === tutorName ? "justify-end" : "justify-start"
                             )}
                           >
@@ -686,23 +729,34 @@ export function MessagesPage() {
                             >
                               <div className="flex items-baseline justify-between mb-1">
                                 <span className="font-medium text-sm">{message.sender}</span>
-                                <span
-                                  className={cn(
-                                    "text-xs ml-2 flex items-center gap-1",
-                                    message.sender === tutorName ? "text-indigo-100" : "text-gray-400"
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      "text-xs flex items-center gap-1",
+                                      message.sender === tutorName ? "text-indigo-100" : "text-gray-400"
+                                    )}
+                                  >
+                                    {formatTimestamp(message.timestamp)}
+                                    {message.sender === tutorName && message.status && (
+                                      <span className="ml-1">
+                                        {message.status === "delivered" ? (
+                                          <Check className="h-3 w-3" />
+                                        ) : message.status === "read" ? (
+                                          <CheckCheck className="h-3 w-3" />
+                                        ) : null}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {message._id && (
+                                    <button
+                                      onClick={() => toggleDropdown(message._id!)}
+                                      className="text-gray-400 hover:text-gray-600"
+                                    >
+
+                                      <MoreVertical className="h-4 w-4" />
+                                    </button>
                                   )}
-                                >
-                                  {formatTimestamp(message.timestamp)}
-                                  {message.sender === tutorName && message.status && (
-                                    <span className="ml-1">
-                                      {message.status === "delivered" ? (
-                                        <Check className="h-3 w-3" />
-                                      ) : message.status === "read" ? (
-                                        <CheckCheck className="h-3 w-3" />
-                                      ) : null}
-                                    </span>
-                                  )}
-                                </span>
+                                </div>
                               </div>
                               {message.imageUrl ? (
                                 <img
@@ -713,7 +767,43 @@ export function MessagesPage() {
                               ) : (
                                 <p className="text-[15px] leading-relaxed">{message.content}</p>
                               )}
+                              {message.reaction && (
+                                <div className="mt-2 text-lg">{message.reaction}</div>
+                              )}
                             </div>
+                            {dropdownOpen === message._id && message._id && (
+                              <div
+                                className={cn(
+                                  "absolute z-10 bg-white shadow-lg rounded-md p-2",
+                                  message.sender === tutorName ? "right-0" : "left-0"
+                                )}
+                              >
+                                <button
+                                  onClick={() => handleDeleteMessage(message._id!)}
+                                  className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete Message
+                                </button>
+                                {message.reaction ? (
+                                  <button
+                                    onClick={() => handleRemoveReaction(message._id!)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 w-full text-left"
+                                  >
+                                    <Heart className="h-4 w-4" />
+                                    Remove Reaction
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleReactToMessage(message._id!)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 w-full text-left"
+                                  >
+                                    <Heart className="h-4 w-4" />
+                                    React with ❤️
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                         <div ref={messagesEndRef} />

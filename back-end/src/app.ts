@@ -28,6 +28,7 @@ import { ReviewRoutes } from "./routes/reviewRoute";
 import videoCallRouter from "./routes/videoCallRoute";
 import { CallHistoryRoute } from "./routes/callHistoryRoute";
 import { NotificationRoute } from "./routes/notificationRoute";
+import { MessageRoutes } from "./routes/messageRoute";
 
 connectDB();
 
@@ -72,6 +73,7 @@ try {
   app.use("/transaction", new TransactionRoutes().router);
   app.use("/reviews", new ReviewRoutes().router);
   app.use('/',new CallHistoryRoute().router)
+  app.use('/users',new MessageRoutes().router)
   app.use('/notification',new NotificationRoute().router)
   app.use("/api",  videoCallRouter);
 

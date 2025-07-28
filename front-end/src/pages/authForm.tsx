@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { EyeIcon, EyeOffIcon, BookOpen, Users, GraduationCap, ShieldCheck, ArrowRight } from "lucide-react";
+import { EyeIcon, EyeOffIcon, BookOpen, Users, GraduationCap, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import OTPModal from "@/components/modalComponents/otpModal";
 import EmailModal from "@/components/modalComponents/emailModal";
 import { NewPasswordModal } from "@/components/modalComponents/forgot-password";
@@ -26,6 +26,20 @@ import { addTutor } from "@/redux/slice/tutorSlice";
 import { loginSchema, registerSchema, type LoginFormData, type RegisterFormData } from "@/validation";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { GoogleAuth } from "@/components/googleAuth/googleAuthComponent";
+import { tutorService } from "@/services/tutorServices/tutorService";
+
+// Define the expected profile response type with approvalStatus
+interface ProfileResponse {
+  profile?: {
+    name?: string | null | undefined;
+    specialization?: string | null | undefined;
+    phone?: string | null | undefined;
+    bio?: string | null | undefined;
+    approvalStatus?: string | null | undefined; // Added approvalStatus
+    rejectionReason?: string | null | undefined;
+    verificationDocUrl?: string | null | undefined;
+  } | null;
+}
 
 export type UserRole = "admin" | "student" | "tutor";
 
@@ -54,10 +68,11 @@ export default function AuthForm({
   const [forgetPasswordEmail, setForgetPasswordEmail] = useState("");
   const [data, setData] = useState<LoginFormData>();
   const [isRegistered, setIsRegistered] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
- const route = useNavigate()
+
   // Login form setup
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -83,7 +98,7 @@ export default function AuthForm({
   const getBackendRole = (frontendRole: UserRole): string => {
     switch (frontendRole) {
       case "student":
-        return "student"; // Backend expects "user" for student
+        return "student";
       case "tutor":
         return "tutor";
       case "admin":
@@ -94,41 +109,58 @@ export default function AuthForm({
   };
 
   useEffect(() => {
-      const adminToken = localStorage.getItem("userDatas"); 
-      if (adminToken) {
-        route("/"); 
+    const adminToken = localStorage.getItem("userDatas");
+    if (adminToken) {
+      navigate("/");
+    }
+  }, [navigate]);
+
+  const handleLoginSubmit = async (data: LoginFormData) => {
+    const backendRole = getBackendRole(activeRole);
+    const endpoint = activeRole === "tutor" ? "/auth/tutor/login" : "/auth/user/login";
+    console.log("Login endpoint:", endpoint);
+
+    try {
+      setLoading(true);
+      const response = await authAxiosInstance.post(endpoint, { ...data, role: backendRole });
+      let { user } = response.data;
+      user = { ...user, role: activeRole };
+
+      if (activeRole === "tutor") {
+        // Fetch tutor profile to check approval status
+        const profileResponse: ProfileResponse = await tutorService.getProfile().catch((error) => {
+          console.error("Failed to fetch tutor profile at", new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }), ":", error);
+          throw error;
+        });
+        console.log("Tutor profile fetched at", new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }), ":", profileResponse);
+
+        const approvalStatus = profileResponse?.profile?.approvalStatus;
+        if (approvalStatus === "pending") {
+          console.log("Redirecting to /tutor/peddingPage due to pending approval status");
+          dispatch(addTutor(user));
+          navigate("/tutor/peddingPage");
+        } else {
+          dispatch(addTutor(user));
+          navigate("/tutor/home");
+        }
+      } else {
+        dispatch(addStudent(user));
+        navigate("/");
       }
-    }, []);
 
-    const handleLoginSubmit = (data: LoginFormData) => {
-      const backendRole = getBackendRole(activeRole);
-      const endpoint = activeRole === "tutor" ? "/auth/tutor/login" : "/auth/user/login";
-      console.log(endpoint)
+      toast.success(response.data.message);
+      loginForm.reset();
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data?.message || "Login failed. Please try again.");
+      } else {
+        toast.error("An unexpected error occurred during login.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const res = authAxiosInstance
-        .post(endpoint, { ...data, role: backendRole }) 
-        .then((response) => {
-          let { user } = response.data;
-          user = { ...user, role: activeRole };
-          if (activeRole === "tutor") {
-            dispatch(addTutor(user));
-            navigate("/tutor/home");
-          } else {
-            dispatch(addStudent(user));
-            navigate("/");
-          }
-    
-          toast.success(response.data.message);
-          loginForm.reset();
-        })
-        .catch((error) =>
-          toast.error(error.response?.data?.message)
-        );
-
-          console.log("redux data-------",res)
-    };
-    
-    
   const handleRegisterSubmit = async (data: RegisterFormData) => {
     try {
       const res = await sendOtp(data);
@@ -146,7 +178,23 @@ export default function AuthForm({
     try {
       const data = registerForm.getValues();
       const backendRole = getBackendRole(activeRole);
+
       const res = await userAuthService.registerUser({ ...data, role: backendRole });
+
+      console.log("✅ user id here:", res.tutorId, res);
+
+      const tutorId = res?.tutorId;
+      if (tutorId) {
+        localStorage.setItem("tutorId", tutorId);
+      }
+
+      // Redirect based on role
+      if (activeRole === "tutor") {
+        navigate("/tutor/profile/create");
+      } else {
+        navigate("/"); // Redirect to login or root for student/admin
+      }
+
       toast.success(res.message);
       onRegister?.(data, activeRole);
       registerForm.reset();
@@ -173,7 +221,7 @@ export default function AuthForm({
       setIsEmailModalOpen(false);
 
       if (forgetPasswordEmail) {
-        setIsNewPasswordModalOpen(true); // Open NewPasswordModal
+        setIsNewPasswordModalOpen(true);
       } else if (data.email) {
         handleRegisterUser();
       }
@@ -360,8 +408,17 @@ export default function AuthForm({
                     </div>
                   </CardContent>
                   <CardFooter className="flex-col gap-4">
-                    <Button type="submit" className={cn("w-full", roleConfig.buttonColor)}>
-                      Login <ArrowRight className="ml-2 h-4 w-4" />
+                    <Button type="submit" className={cn("w-full", roleConfig.buttonColor)} disabled={loading}>
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Logging in...
+                        </>
+                      ) : (
+                        <>
+                          Login <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
                     </Button>
                     <div className="relative w-full">
                       <div className="absolute inset-0 flex items-center">
@@ -535,7 +592,7 @@ export default function AuthForm({
             isOpen={isOTPModalOpen}
             onClose={() => setIsOTPModalOpen(false)}
             onVerify={handleOTPVerified}
-            role ={activeRole}
+            role={activeRole}
             data={data}
             setIsOTPMpdalOpen={setIsOTPModalOpen}
           />

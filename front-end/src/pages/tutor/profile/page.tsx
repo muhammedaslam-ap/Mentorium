@@ -26,6 +26,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { tutorService } from "@/services/tutorServices/tutorService";
 import { Header } from "../components/header";
 import { Sidebar } from "../components/sideBar";
+import { useDispatch, useSelector } from "react-redux"; // Import Redux hooks
+import { RootState } from "@/redux/store"; // Adjust the import path as needed
+import { addTutor } from "@/redux/slice/tutorSlice"; // Adjust the import path and action as needed
+import { authAxiosInstance } from "@/api/authAxiosInstance";
 
 interface TutorProfile {
   name: string;
@@ -47,6 +51,14 @@ interface ProfileResponse {
     rejectionReason?: string | null;
     verificationDocUrl?: string | null;
   } | null;
+}
+
+interface TutorData {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  isAccepted: boolean;
 }
 
 export default function TutorProfilePage() {
@@ -77,6 +89,9 @@ export default function TutorProfilePage() {
     document?: string;
   }>({});
   const [removeDocument, setRemoveDocument] = useState(false);
+
+  const dispatch = useDispatch();
+  const tutorDataFromRedux = useSelector((state: any) => state?.tutor?.tutorDatas); // Access Redux tutor data
 
   const validatePhoneNumber = (phone: string): boolean => {
     const cleaned = phone.replace(/[\s\(\)-+]/g, '');
@@ -156,13 +171,19 @@ export default function TutorProfilePage() {
 
   useEffect(() => {
     let isMounted = true;
-    console.log("useEffect: Fetching tutor profile");
+    console.log("useEffect: Fetching tutor profile and tutor data");
     fetchTutorProfile().catch((error) => {
       if (isMounted) {
         console.error("fetchTutorProfile failed in useEffect:", error);
         toast.error("Failed to load profile data");
         setHasProfile(false);
         setLoading(false);
+      }
+    });
+    fetchTutorData().catch((error) => {
+      if (isMounted) {
+        console.error("fetchTutorData failed in useEffect:", error);
+        toast.error("Failed to load tutor data");
       }
     });
     return () => {
@@ -199,7 +220,7 @@ export default function TutorProfilePage() {
         setProfile(profileData);
         setOriginalProfile(profileData);
         setHasProfile(!!profileData.name);
-        setRemoveDocument(false); 
+        setRemoveDocument(false);
 
         if (profileData.verificationDocUrl) {
           setUrlLoading(true);
@@ -245,6 +266,33 @@ export default function TutorProfilePage() {
       setLoading(false);
     }
   };
+
+const fetchTutorData = async () => {
+  try {
+    console.log("suii", tutorDataFromRedux.id);
+
+    const response = await authAxiosInstance.get(`/auth/me/${tutorDataFromRedux.id}`);
+    console.log("fetchTutorData blabla response:");
+
+    const newIsAccepted = response.data.userData.isAccepted ?? false;
+
+    if (tutorDataFromRedux?.isAccepted !== newIsAccepted) {
+      console.log("Tutor isAccepted status changed, updating Redux store");
+
+      const updatedTutorData = {
+        ...tutorDataFromRedux,
+        isAccepted: newIsAccepted,
+      };
+
+      dispatch(addTutor(updatedTutorData));
+    }
+  } catch (error: any) {
+    console.error("Failed to fetch tutor data:", error);
+    toast.error("Failed to load tutor data");
+  }
+};
+
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -329,6 +377,7 @@ export default function TutorProfilePage() {
         fileInputRef.current.value = "";
       }
       await fetchTutorProfile();
+      await fetchTutorData(); // Refresh tutor data after profile update
       setEditMode(false);
       setFormErrors({});
     } catch (error: any) {

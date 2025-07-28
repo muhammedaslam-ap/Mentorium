@@ -9,6 +9,7 @@ import {
   TPaginationOptions,
   TUpdatePassword,
   TUserPaginatedResult,
+  
 } from "../types/user";
 import { IUserRepository } from "../interfaces/repositoryInterface/IuserRepository";
 

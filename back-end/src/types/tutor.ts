@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { Request } from 'express';
 import { TPaginatedResult } from './common';
+import { MulterS3File } from './multer';
 
 export type TTutorModel = {
   name: string;
@@ -18,13 +19,26 @@ export type TTutorModel = {
   rejectionReason?: string;
 };
 
+export  interface TutorProfileRequest extends Request {
+  body: {
+    tutorId: string;
+    name: string;
+    specialization: string;
+    phone: string;
+    bio?: string;
+  };
+  file: MulterS3File;
+}
+
 export type TTutorPaginatedResult = TPaginatedResult<TTutorModel>;
 
 export type TTutorProfileInput = {
   name:string;
   specialization: string;
   phone: string;
-  bio: string;
+  bio?: string;
+  approvalStatus ?:string;
+  rejectionReason?:string;
   verificationDocUrl:string
 };
 

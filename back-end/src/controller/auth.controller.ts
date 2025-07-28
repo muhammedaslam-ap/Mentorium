@@ -31,11 +31,12 @@ export class AuthController {
         };
       }
 
-      await this._authService.registerUser(data);
-
+      const user = await this._authService.registerUser(data);
+      console.log("new user here",user)
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
         message: SUCCESS_MESSAGES.REGISTRATION_SUCCESS,
+        tutorId:user._id
       });
     } catch (error) {
       if (error instanceof CustomError) {
@@ -149,6 +150,7 @@ export class AuthController {
  async findUserById(req: Request, res: Response) {
   try {
     const userId = req.params.userId; 
+    console.log("hhh",userId)
     if (!userId) {
       return res.status(400).json({ message: "userId is required in route params" });
     }

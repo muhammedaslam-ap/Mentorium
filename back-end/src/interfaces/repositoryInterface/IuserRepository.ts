@@ -8,7 +8,7 @@ import {
 } from "../../types/user";
 
 export interface IUserRepository {
-  createUser(data: TUserRegister): Promise<void | TUserModel>;
+  createUser(data: TUserRegister): Promise<TUserModel>;
   findByEmail(email: string): Promise<TUserModel | null>;
   resetPassword(data: TUpdatePassword): Promise<boolean>;
   getUsers(options: TPaginationOptions): Promise<TUserPaginatedResult>;

@@ -49,6 +49,8 @@ import LearningPathPage from "./pages/student/learningPath";
 import AboutPage from "./pages/student/about";
 import TutorCallHistory from "./pages/tutor/videoCall/callVideo";
 import StudentCallHistory from "./pages/student/videoCall/callHistory";
+import CreateTutorProfile from "./pages/tutor/profile/createProfile";
+import UnderVerification from "./pages/tutor/profile/pendingPage";
 
 function VideoCallHandler() {
   const { videoCall, showVideoCallTrainer, showIncomingCallTrainer } = useSelector(
@@ -231,6 +233,23 @@ function App() {
                     </ProtectedTutorRoute>
                   }
                 />
+                <Route
+                  path="/tutor/peddingPage"
+                  element={
+                    <ProtectedTutorRoute>
+                      <UnderVerification/>
+                    </ProtectedTutorRoute>
+
+                  }
+                />
+                
+                <Route
+                  path="/tutor/profile/create"
+                  element={
+                      <CreateTutorProfile/>
+                  }
+                />
+                
                 <Route
                   path="/tutor/courses/add"
                   element={

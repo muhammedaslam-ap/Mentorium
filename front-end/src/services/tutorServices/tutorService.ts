@@ -1,6 +1,7 @@
+// src/services/tutorServices/tutorService.ts
 import { toast } from "sonner";
 import { authAxiosInstance } from "../../api/authAxiosInstance";
-import { AxiosError } from "axios";
+import axios, { AxiosError } from "axios";
 
 interface ProfileData {
   name: string;
@@ -15,13 +16,76 @@ interface ProfileResponse {
     specialization?: string | null;
     phone?: string | null;
     bio?: string | null;
-    isAccepted?: boolean | null; 
+    isAccepted?: boolean | null;
     rejectionReason?: string | null;
     verificationDocUrl?: string | null;
   } | null;
 }
 
 export class TutorService {
+  async createProfileDirect(tutorId: string, profileData: ProfileData, file: File) {
+    try {
+      const formData = new FormData();
+      formData.append("tutorId", tutorId);
+      formData.append("name", profileData.name);
+      formData.append("specialization", profileData.specialization);
+      formData.append("phone", profileData.phone);
+      if (profileData.bio) {
+        formData.append("bio", profileData.bio);
+      }
+      if (file) {
+        formData.append("verificationDoc", file); // Ensure this matches the backend field name
+      }
+
+      console.log(
+        "FormData contents for direct profile creation:",
+        Array.from(formData.entries()).map(([key, value]) =>
+          typeof value === "object" ? `${key}: ${(value as File).name}` : `${key}: ${value}`
+        )
+      );
+
+      const response = await authAxiosInstance.post("/tutor/profile/direct", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 60000,
+      });
+
+      // Log detailed response information
+      console.log("Response headers:", response.headers);
+      console.log("Raw response data (type:", typeof response.data, "):", response.data);
+
+      // Handle response based on type
+      if (response.data && typeof response.data === "object") {
+        console.log("Returning parsed object:", response.data);
+        return response.data as ProfileResponse;
+      } else if (typeof response.data === "string") {
+        try {
+          const parsedData = JSON.parse(response.data);
+          console.log("Parsed JSON data:", parsedData);
+          return parsedData as ProfileResponse;
+        } catch (parseError: any) {
+          console.error("Invalid JSON response:", response.data, "Error:", parseError.message);
+          throw new Error(`Invalid JSON data: ${parseError.message}`);
+        }
+      } else {
+        console.error("Unexpected response type:", typeof response.data);
+        throw new Error("Unexpected response format from server");
+      }
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        console.error("Axios error details:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          headers: error.response?.headers,
+        });
+        const errorMessage = error.response?.data?.message || "Unable to submit profile";
+        toast.error(errorMessage);
+        throw error;
+      }
+      console.error("Unexpected error:", error);
+      throw error;
+    }
+  }
+
   async createProfile(profileData: ProfileData, file: File | null) {
     try {
       const formData = new FormData();
@@ -71,7 +135,6 @@ export class TutorService {
     }
   }
 
-
   async fetchNotification() {
     try {
       const response = await authAxiosInstance.get("/tutors/notifications");
@@ -82,11 +145,9 @@ export class TutorService {
     }
   }
 
-  async markNotifiactionAsRead(notificationId: string) {
+  async markNotificationAsRead(notificationId: string) {
     try {
-      await authAxiosInstance.put(
-        `/tutors/notifications/${notificationId}/read`
-      );
+      await authAxiosInstance.put(`/tutors/notifications/${notificationId}/read`);
     } catch (error) {
       console.log(error);
     }
