@@ -12,7 +12,7 @@ export const useAppContext = () => useContext(AppContext);
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
-  useEffect(() => {
+  useEffect(() => { 
     const socketInstance = io(import.meta.env.VITE_AUTH_BASEURL, {
       withCredentials: true, // Send cookies (tutorAccessToken)
       transports: ["websocket", "polling"],
