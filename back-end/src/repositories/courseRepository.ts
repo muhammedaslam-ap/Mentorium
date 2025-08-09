@@ -78,8 +78,7 @@ export class CourseRepository implements ICourseRepository {
     tutorId: string,
     page: number,
     limit: number
-  ): Promise<{ courses: TCourseAdd[] | null; totalCourses: number }> {
-
+  ): Promise<{ courses: TCourseAdd[]; totalCourses: number }> { 
     console.log('here is the tutor id in repo', tutorId)
     const courses = await courseModel
       .find({ tutorId })
@@ -89,9 +88,10 @@ export class CourseRepository implements ICourseRepository {
 
     console.log('here is the course of tutor =>>>>>', courses, totalCourses)
 
-    return { courses, totalCourses };
+    return { courses: courses ?? [], totalCourses: courses?.length ?? 0 };
   }
 
+  
   async editCourse(
     data: TCourseAdd,
     thumbnail: string,

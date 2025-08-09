@@ -30,35 +30,43 @@ export class PurchaseController {
         return;
       }
       console.log(error);
-      res
-        .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
   }
 
   async checkEnrollment(req: Request, res: Response) {
     try {
       const user = (req as CustomRequest).user;
-      console.log("here im------>",user)
+      console.log("here im------>", user);
       if (!user?.id) {
-        throw new Error( ERROR_MESSAGES.UNAUTHORIZED_ACCESS);
+        throw new Error(ERROR_MESSAGES.UNAUTHORIZED_ACCESS);
       }
 
       const { courseId } = req.params;
       if (!courseId) {
-        throw new Error( ERROR_MESSAGES.MISSING_PARAMETERS);
+        throw new Error(ERROR_MESSAGES.MISSING_PARAMETERS);
       }
 
-      const isEnrolled = await this._purchaseService.checkEnrollment(user.id, courseId);
-      console.log("finallyyyyyyy",isEnrolled)
+      const isEnrolled = await this._purchaseService.checkEnrollment(
+        user.id,
+        courseId
+      );
+      console.log("finallyyyyyyy", isEnrolled);
       res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: isEnrolled ? "User is enrolled in the course" : "User is not enrolled in the course",
+        message: isEnrolled
+          ? SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS
+          : ERROR_MESSAGES.NOT_ALLOWED,
         data: { isEnrolled },
       });
     } catch (error) {
       if (error instanceof CustomError) {
-        res.status(error.statusCode).json({ success: false, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ success: false, message: error.message });
         return;
       }
       console.error("Error in checkEnrollment:", error);
@@ -69,26 +77,32 @@ export class PurchaseController {
     }
   }
 
- async getEnrolledCourses(req: Request, res: Response) {
+  async getEnrolledCourses(req: Request, res: Response) {
     try {
       const user = (req as CustomRequest).user;
-  
-      const result = await this._purchaseService.getUserEnrolledCourses(user.id);
 
-      const defaultThumbnail = "/uploads/default.jpg"; 
+      const result = await this._purchaseService.getUserEnrolledCourses(
+        user.id
+      );
+
+      const defaultThumbnail = "/uploads/default.jpg";
       const updatedCourses = result.courses
         ? await Promise.all(
             result.courses.map(async (course) => {
               try {
                 const thumbnail = course.thumbnail || defaultThumbnail;
-                console.log(`Processing thumbnail for course ${course._id}: ${thumbnail}`);
+                console.log(
+                  `Processing thumbnail for course ${course._id}: ${thumbnail}`
+                );
                 const secureUrl = await createSecureUrl(thumbnail, "image");
                 return {
                   ...course,
-                  thumbnail: secureUrl || defaultThumbnail, 
+                  thumbnail: secureUrl || defaultThumbnail,
                 };
-              } catch (error:any) {
-                console.error(`Error creating secure URL for course ${course._id}: ${error.message}`);
+              } catch (error: any) {
+                console.error(
+                  `Error creating secure URL for course ${course._id}: ${error.message}`
+                );
                 return {
                   ...course,
                   thumbnail: defaultThumbnail,
@@ -98,11 +112,21 @@ export class PurchaseController {
           )
         : [];
 
-      console.log("Updated courses with secure URLs:", JSON.stringify(updatedCourses, null, 2));
-      res.status(HTTP_STATUS.OK).json({ courses: updatedCourses, total: result.total });
+      console.log(
+        "Updated courses with secure URLs:",
+        JSON.stringify(updatedCourses, null, 2)
+      );
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        courses: updatedCourses,
+        total: result.total,
+      });
     } catch (error) {
       if (error instanceof CustomError) {
-        res.status(error.statusCode).json({ success: false, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ success: false, message: error.message });
         return;
       }
       console.error("Error getting enrolled courses:", error);
@@ -113,24 +137,29 @@ export class PurchaseController {
     }
   }
 
-    async myPurchaseHistory(req: CustomRequest, res: Response) {
+  async myPurchaseHistory(req: CustomRequest, res: Response) {
     try {
       const userId = req.user?.id;
       if (!userId) {
-        return res.status(401).json({ success: false, message: "Unauthorized" });
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: ERROR_MESSAGES.UNAUTHORIZED_ACCESS,
+        });
       }
 
       const history = await this._purchaseService.getPurchaseHistory(userId);
-      console.log('haro haro hara',history)
-      res.status(200).json({
+      console.log("haro haro hara", history);
+      res.status(HTTP_STATUS.OK).json({
         success: true,
-        message: "Purchase history retrieved",
-        history
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        history,
       });
     } catch (error) {
       console.error("Purchase history error:", error);
-      res.status(500).json({ success: false, message: "Server error" });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
   }
-
 }

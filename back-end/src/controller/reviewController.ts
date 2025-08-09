@@ -13,14 +13,15 @@ export class ReviewController {
       const user = (req as CustomRequest).user;
       const { courseId, rating, comment } = req.body;
 
-      console.log("IN CONTROLLER REVIEW ADDING",req.body)
-     const data =  await this._reviewService.addReview({
-        course_id:courseId,
+      console.log("IN CONTROLLER REVIEW ADDING", req.body);
+
+      const data = await this._reviewService.addReview({
+        course_id: courseId,
         user_id: user!.id,
         rating,
         comment,
       });
-      
+
       res.status(HTTP_STATUS.CREATED).json({
         success: true,
         message: SUCCESS_MESSAGES.CREATED,
@@ -41,7 +42,9 @@ export class ReviewController {
     try {
       const { courseId } = req.params;
       const reviews = await this._reviewService.getReviewsForCourse(courseId);
-        console.log("Backend Review",reviews)
+
+      console.log("Backend Review", reviews);
+
       res.status(HTTP_STATUS.OK).json({
         success: true,
         message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,

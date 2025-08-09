@@ -5,10 +5,10 @@ import {
   CustomRequest,
 } from '../middlewares/userAuthMiddleware';
 import { checkUserBlocked } from '../middlewares/checkUserBlocked';
-import { NotificationController } from '../controller/notificationController';
+
+import {notificationController} from '../di/notificationInjection'; 
 
 export class NotificationRoute {
-  private callHistoryController = new NotificationController
   public router: Router;
 
   constructor() {
@@ -16,16 +16,16 @@ export class NotificationRoute {
     this.initializeRoutes();
   }
 
-  initializeRoutes() {
-  this.router.delete(
+  private initializeRoutes(): void {
+    this.router.delete(
       '/clear/:userId',
       userAuthMiddleware,
       authorizeRole(['tutor', 'student']),
       checkUserBlocked,
-      (req: Request, res: Response) =>{
-        console.log("hellow here blaalablaa")
-        this.callHistoryController.deleteAllNotifications(req as CustomRequest, res)
-    });
+      (req: Request, res: Response) => {
+        notificationController.deleteAllNotifications(req as CustomRequest, res);
+      }
+    );
   }
 }
 

@@ -8,7 +8,6 @@ import { createSecureUrl } from "../utils/cloudinaryURL";
 import { ERROR_MESSAGES, HTTP_STATUS, SUCCESS_MESSAGES } from "../shared/constant";
 import { courseModel } from "../models/course";
 import mongoose from "mongoose";
-import { CLIENT_RENEG_LIMIT } from "tls";
 
 export class CourseController {
   constructor(private _courseService: ICourseService) {}
@@ -52,64 +51,66 @@ export class CourseController {
         console.log("Uploaded Secure Image Public ID:", publicId);
       }
       await this._courseService.addCourse(req.body, publicId, tutor?.id);
-      res.status(201).json({
+      res.status(HTTP_STATUS.CREATED).json({
         success: true,
-        message: "Course created successfully",
+        message: SUCCESS_MESSAGES.CREATED,
       });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ success: false, message: "Internal Server Error" });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
   }
-
 
   async getCourseById(req: CustomRequest, res: Response): Promise<void> {
     try {
       const { courseId } = req.params; 
       const userId = req.user?.id;     
-      
-      console.log(courseId, userId)
 
       if (!courseId || !userId) {
-        res.status(400).json({ success: false, message: 'Invalid courseId or userId' });
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: ERROR_MESSAGES.MISSING_PARAMETERS,
+        });
         return;
       }
 
       const result = await this._courseService.getCourseById(courseId, userId);
-      console.log(result)
       res.status(result.statusCode).json({
         success: result.success,
-        message: result.message || '',
+        message: result.message || SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
         course: result.course,
       });
     } catch (error) {
-      console.error('Error in getCourseById controller:', error);
-      res.status(500).json({ success: false, message: 'Internal server error' });
+      console.error("Error in getCourseById controller:", error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
   }
+
   async getTutorCourses(req: CustomRequest, res: Response) {
     try {
       const tutor = req.user;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 6;
-      
 
-      console.log('here is the tutor id in service', tutor.id)
-  
       const { courses, totalCourses } = await this._courseService.getTutorCourses(tutor.id, page, limit);
-  
+
       const updatedCourses = courses
         ? await Promise.all(
             courses.map(async (course) => {
               if (course.thumbnail) {
-                console.log("COURSE THUMBNAIL", course.thumbnail);
-                course.thumbnail = await createSecureUrl(course.thumbnail, 'image');
+                course.thumbnail = await createSecureUrl(course.thumbnail, "image");
               }
               return course;
             })
           )
         : [];
-  
+
       res.status(HTTP_STATUS.OK).json({
         success: true,
         message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
@@ -124,7 +125,7 @@ export class CourseController {
       });
     }
   }
-  
+
   async updateCourse(req: CustomRequest, res: Response) {
     try {
       const { courseId } = req.params;
@@ -159,10 +160,9 @@ export class CourseController {
           if (req.file) {
             stream.end(req.file.buffer);
           }
-          });
+        });
 
         publicId = (uploadResult as UploadApiResponse).public_id;
-        console.log("Uploaded Secure Image Public ID:", publicId);
       }
 
       await this._courseService.updateCourse(req.body, publicId, courseId.toString());
@@ -176,7 +176,10 @@ export class CourseController {
         return;
       }
       console.log(error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
   }
 
@@ -194,26 +197,25 @@ export class CourseController {
         return;
       }
       console.log(error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: ERROR_MESSAGES.SERVER_ERROR });
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
   }
 
-
- async getAllStudents(req: CustomRequest, res: Response) {
+  async getAllStudents(req: CustomRequest, res: Response) {
     try {
       const { courseId } = req.params;
 
       if (!courseId) {
-        return res.status(400).json({
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
-          message: "Course ID is required",
+          message: ERROR_MESSAGES.MISSING_PARAMETERS,
         });
       }
 
-
       const students = await this._courseService.getAllStudents(courseId);
-      console.log("HYYYYYYYYY",students)
-
       res.status(HTTP_STATUS.OK).json({
         success: true,
         message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
@@ -228,68 +230,65 @@ export class CourseController {
     }
   }
 
- async getAllCourses(req: CustomRequest, res: Response) {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 6;
-    const search = (req.query.search as string | undefined)?.trim() || "";
-    const category = (req.query.category as string | undefined)?.trim() || "";
-    const difficulty = (req.query.difficulty as string | undefined)?.trim() || "";
-    const minPriceStr = req.query.minPrice as string | undefined;
-    const maxPriceStr = req.query.maxPrice as string | undefined;
-    const sort = (req.query.sort as string | undefined)?.trim() || "";
+  async getAllCourses(req: CustomRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 6;
+      const search = (req.query.search as string | undefined)?.trim() || "";
+      const category = (req.query.category as string | undefined)?.trim() || "";
+      const difficulty = (req.query.difficulty as string | undefined)?.trim() || "";
+      const minPriceStr = req.query.minPrice as string | undefined;
+      const maxPriceStr = req.query.maxPrice as string | undefined;
+      const sort = (req.query.sort as string | undefined)?.trim() || "";
 
-    // Validate numeric query parameters
-    const minPrice = minPriceStr ? parseInt(minPriceStr) : 0;
-    const maxPrice = maxPriceStr ? parseInt(maxPriceStr) : 1500;
+      const minPrice = minPriceStr ? parseInt(minPriceStr) : 0;
+      const maxPrice = maxPriceStr ? parseInt(maxPriceStr) : 1500;
 
-    if (isNaN(minPrice) || isNaN(maxPrice)) {
-      throw new CustomError("Invalid price range", HTTP_STATUS.BAD_REQUEST);
+      if (isNaN(minPrice) || isNaN(maxPrice)) {
+        throw new CustomError(ERROR_MESSAGES.INVALID_PRICE_RANGE, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      if (minPrice < 0 || maxPrice < minPrice) {
+        throw new CustomError(ERROR_MESSAGES.INVALID_PRICE_RANGE_VALUES, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const { courses, total } = await this._courseService.getAllCourses({
+        page,
+        limit,
+        search,
+        category,
+        difficulty,
+        minPrice,
+        maxPrice,
+        sort,
+      });
+
+      const updatedCourses = courses
+        ? await Promise.all(
+            courses.map(async (course) => {
+              if (course.thumbnail) {
+                course.thumbnail = await createSecureUrl(course.thumbnail, "image");
+              }
+              return course;
+            })
+          )
+        : [];
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
+        courses: { courses: updatedCourses, total },
+      });
+    } catch (error) {
+      if (error instanceof CustomError) {
+        res.status(error.statusCode).json({ success: false, message: error.message });
+        return;
+      }
+      console.log(error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: ERROR_MESSAGES.SERVER_ERROR,
+      });
     }
-
-    if (minPrice < 0 || maxPrice < minPrice) {
-      throw new CustomError("Invalid price range values", HTTP_STATUS.BAD_REQUEST);
-    }
-
-    const { courses, total } = await this._courseService.getAllCourses({
-      page,
-      limit,
-      search,
-      category,
-      difficulty,
-      minPrice,
-      maxPrice,
-      sort,
-    });
-
-    const updatedCourses = courses
-      ? await Promise.all(
-          courses.map(async (course) => {
-            if (course.thumbnail) {
-              console.log("COURSE THUMBNAIL", course.thumbnail);
-              course.thumbnail = await createSecureUrl(course.thumbnail, "image");
-            }
-            return course;
-          })
-        )
-      : [];
-
-    res.status(HTTP_STATUS.OK).json({
-      success: true,
-      message: SUCCESS_MESSAGES.DATA_RETRIEVED_SUCCESS,
-      courses: { courses: updatedCourses, total },
-    });
-  } catch (error) {
-    if (error instanceof CustomError) {
-      res.status(error.statusCode).json({ success: false, message: error.message });
-      return;
-    }
-    console.log(error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: ERROR_MESSAGES.SERVER_ERROR,
-    });
   }
-}
-
 }

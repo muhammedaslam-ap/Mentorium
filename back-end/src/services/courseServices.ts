@@ -1,3 +1,4 @@
+import { ICourseRepository } from "../interfaces/repositoryInterface/IcourseRepository";
 import { ICourseService } from "../interfaces/serviceInterface/IcourseServices";
 import { CourseRepository } from "../repositories/courseRepository";
 import { TCourseAdd } from "../types/course";
@@ -5,7 +6,7 @@ import { TCourseFilterOptions, TStudent, TUserModel } from "../types/user";
 import { createSecureUrl } from "../utils/cloudinaryURL";
 
 export class CourseService implements ICourseService {
-  constructor(private _courseRepository: CourseRepository) {}
+  constructor(private _courseRepository: ICourseRepository) {}
 
   async getCourseById(courseId: string, tutorId: string) {
     try {

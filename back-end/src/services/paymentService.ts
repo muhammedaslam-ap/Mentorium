@@ -1,4 +1,3 @@
-// paymentService.ts
 import mongoose, { isValidObjectId } from 'mongoose';
 import Stripe from 'stripe';
 import { purchaseModel } from '../models/buyCourseModal';
@@ -7,7 +6,7 @@ import { HTTP_STATUS } from '../shared/constant';
 import { courseModel } from '../models/course';
 import { userModel } from '../models/userModel';
 import { WalletModel } from '../models/walletModel';
- import { AdminWalletModel } from '../models/adminWallet'; // <-- adjust path as needed
+ import { AdminWalletModel } from '../models/adminWallet'; 
 
 
 interface PurchaseDetails {

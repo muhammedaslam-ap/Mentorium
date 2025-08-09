@@ -7,6 +7,8 @@ import { MulterS3File } from '../types/multer';
 import  TNotification  from '../types/notification';
 import { TStudent } from '../types/user';
 import { userModel } from '../models/userModel';
+import { ITutorService } from '../interfaces/serviceInterface/ItutorServices';
+import { ITutorRepository } from '../interfaces/repositoryInterface/ItutorRepository';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -16,12 +18,9 @@ const s3Client = new S3Client({
   },
 });
 
-export class TutorService {
-  private tutorRepository: TutorRepository;
+export class TutorService implements ITutorService{
 
-  constructor(tutorRepository: TutorRepository) {
-    this.tutorRepository = tutorRepository;
-  }
+  constructor(private tutorRepository: ITutorRepository) {}
 
   async addTutorProfile(tutorId: string, profileData: TTutorProfileInput, verificationDocUrl?: string): Promise<void> {
     return this.tutorRepository.createTutorProfile(tutorId, profileData, verificationDocUrl);

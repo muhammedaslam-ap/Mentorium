@@ -26,7 +26,10 @@ export enum HTTP_STATUS {
     DATA_RETRIEVED_SUCCESS :"Data fetched successfully",
     ADDED_WHISHLIST:"Item added to whishlist",
     ALREADY_WISHLIST:"Item alredy in wishlist",
-    REMOVED_WHISHLIST:"Item removed from wishlist"
+    REMOVED_WHISHLIST:"Item removed from wishlist",
+    REACTION_ADDED: "Reaction added",
+    REACTION_REMOVED: "Reaction removed",
+    MESSAGE_DELETED: "Message deleted successfully",
   };
   
   
@@ -47,6 +50,7 @@ export enum HTTP_STATUS {
     BLOCKED : "Your account has been blocked.",
     NOT_ALLOWED : "You are not allowed",
     EMAIL_EXISTS : "Email Already Exists",
+    INVALID_TOKEN_PAYLOAD: "Invalid token payload",
     INVALID_TOKEN : "Invalid token",
     INVALID_CREDENTIALS : "Invalid credentials provided.",
     USER_NOT_FOUND : "User not found.",
@@ -58,6 +62,12 @@ export enum HTTP_STATUS {
     ROUTE_NOT_FOUND : "Route not found.",
     ID_NOT_PROVIDED : "ID not provided",
     INVALID_PASSWORD : "Password Doesnot Match",
-    GOOGLE_USER:"This user is an google auth user no password change is possible"
+    GOOGLE_USER:"This user is an google auth user no password change is possible",
+    PASSWORD_RESET_FAILED: "Failed to reset password",
+    USER_ID_REQUIRED: "User ID is required in route params",
+    INVALID_PRICE_RANGE: "Invalid price range",
+    INVALID_PRICE_RANGE_VALUES: "Invalid price range values",
+    EMOJI_REQUIRED: "Emoji is required to remove reaction",
+
   };
   

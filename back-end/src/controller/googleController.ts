@@ -33,12 +33,13 @@ export class Controller {
       console.log('Token payload:', payload); 
   
       if (!payload || !payload.email || !payload.given_name) {
-        throw new Error("Invalid token payload");
+        throw new Error(ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD);
       }
   
       const existingUser = await this._Service.findByEmail(payload.email);
       console.log('Existing User:', existingUser); 
       console.log('Role mismatch:', role);  
+      
       if (!existingUser) {
         console.log('No user found with this email:', payload.email);
       } else if (existingUser.role !== role) {
@@ -57,7 +58,7 @@ export class Controller {
       console.log('Created User:', user); 
   
       if (!user || !user._id || !user.email || !user.role) {
-        throw new Error("User data is missing or incomplete");
+        throw new Error(ERROR_MESSAGES.INVALID_TOKEN_PAYLOAD);
       }
   
       const accessToken = this._jwtService.generateAccessToken({

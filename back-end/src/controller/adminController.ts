@@ -6,11 +6,11 @@ import {
   SUCCESS_MESSAGES,
 } from "../shared/constant";
 import { IAdminService } from "../interfaces/serviceInterface/IadminServices";
-import { TutorService } from "../services/tutorServices";
+import { ITutorService } from "../interfaces/serviceInterface/ItutorServices";
 
 export class AdminController {
   constructor(private _adminService: IAdminService,
-              private _tutorService:TutorService
+              private _tutorService:ITutorService
   ) {}
 
   async logoutAdmin(req: Request, res: Response) {

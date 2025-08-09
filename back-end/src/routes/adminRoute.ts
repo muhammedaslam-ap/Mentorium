@@ -39,7 +39,6 @@ export class AdminRoutes{
              injectedAdminController.updateStatus(req, res)
          );
 
-        // Logout
            this.router.post(
              "/logout",
              adminAuthMiddleware,

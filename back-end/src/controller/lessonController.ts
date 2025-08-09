@@ -4,9 +4,10 @@ import { TLessonInput } from '../types/lesson';
 import { MulterS3File } from '../types/multer';
 import { LessonService } from '../services/lessonServices';
 import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../shared/constant'
+import { ILessonService } from '../interfaces/serviceInterface/IlessonServices';
 
 export class LessonController {
-  constructor(private lessonService: LessonService) {}
+  constructor(private lessonService: ILessonService) {}
 
   async addLesson(req: CustomRequest, res: Response): Promise<void> {
     try {

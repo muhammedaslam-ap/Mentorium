@@ -1,32 +1,23 @@
 import { Request, Response } from "express";
 import { CustomRequest } from "../middlewares/userAuthMiddleware";
-import { NotificationModel } from "../models/notificationModel";
-import mongoose from "mongoose";
+import { INotificationService } from "../interfaces/serviceInterface/InotificationServices";
 
 export class NotificationController {
- async deleteAllNotifications(req: CustomRequest, res: Response) {
+  constructor(private notificationService: INotificationService) {}
+
+  async deleteAllNotifications(req: CustomRequest, res: Response) {
     try {
-      const userId = req.user?.id;
+      const requestingUserId = req.user?.id;
       const { userId: targetUserId } = req.params;
 
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      if (!requestingUserId) return res.status(401).json({ message: "Unauthorized" });
 
-      if (!targetUserId || !mongoose.Types.ObjectId.isValid(targetUserId)) {
-        return res.status(400).json({ message: "Invalid userId" });
-      }
-
-      if (userId !== targetUserId) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      await NotificationModel.deleteMany({ userId: targetUserId });
+      await this.notificationService.deleteAllNotifications(requestingUserId, targetUserId);
 
       return res.status(200).json({ message: "All notifications deleted" });
-    } catch (err) {
+    } catch (err: any) {
       console.error("[ERROR] deleteAllNotifications:", err);
-      return res.status(500).json({ message: "Internal server error" });
+      return res.status(err.status || 500).json({ message: err.message || "Internal error" });
     }
   }
 }

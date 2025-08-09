@@ -1,9 +1,9 @@
+import { IWishlistRepository } from "../interfaces/repositoryInterface/IwishlistRepository";
 import { IWishlistService } from "../interfaces/serviceInterface/IwishlistServices";
-import { WishlistReposiotry } from "../repositories/wishlistRepository";
 import { TCourseAdd } from "../types/course";
 
 export class WishlistService implements IWishlistService{
-    constructor(private _wishlistRepository:WishlistReposiotry){}
+    constructor(private _wishlistRepository:IWishlistRepository){}
 
     async addToWishlist(userId: string, courseId: string): Promise<boolean> {
       return  await this._wishlistRepository.addToWishlist(userId,courseId)

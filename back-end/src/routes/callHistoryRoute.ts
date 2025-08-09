@@ -5,11 +5,10 @@ import {
   CustomRequest,
 } from '../middlewares/userAuthMiddleware';
 import { checkUserBlocked } from '../middlewares/checkUserBlocked';
-import { CallHistoryController } from '../controller/callHistoryController';
-import { CallHistory } from '../config/socketIO';
+import { callHistoryController } from '../di/callHistoryInjection';
+
 
 export class CallHistoryRoute {
-  private callHistoryController = new CallHistoryController
   public router: Router;
 
   constructor() {
@@ -25,7 +24,7 @@ export class CallHistoryRoute {
       checkUserBlocked,
       (req: Request, res: Response) =>{
         console.log("hellow here blaalablaa")
-        this.callHistoryController.getCallHistory(req as CustomRequest, res)
+        callHistoryController.getCallHistory(req as CustomRequest, res)
     });
   }
 }

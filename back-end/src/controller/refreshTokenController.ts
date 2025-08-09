@@ -10,10 +10,11 @@ import {
   updateCookieWithAccessToken,
 } from "../utils/cookieHelper";
 import { RefreshTokenService } from "../services/refreshTokenService";
+import { IRefreshTokenService } from "../interfaces/serviceInterface/refreshTokenService";
 
 export class RefreshTokenController {
   constructor(
-    private _refreshTokenService: RefreshTokenService,
+    private _refreshTokenService: IRefreshTokenService,
   ) {}
  async handle(req: Request, res: Response): Promise<void> {
   try {

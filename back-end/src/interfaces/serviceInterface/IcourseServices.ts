@@ -1,4 +1,3 @@
-// interfaces/serviceInterface/ICourseService.ts
 
 import { TCourseAdd } from "../../types/course";
 import { TCourseFilterOptions, TStudent, TUserModel } from "../../types/user";

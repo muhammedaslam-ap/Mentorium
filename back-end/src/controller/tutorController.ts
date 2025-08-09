@@ -7,6 +7,7 @@ import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/clien
 import { HTTP_STATUS, SUCCESS_MESSAGES, ERROR_MESSAGES } from '../shared/constant';
 import { CustomError } from '../utils/custom.error';
 import { createSecureUrl } from '../utils/cloudinaryURL';
+import { ITutorService } from '../interfaces/serviceInterface/ItutorServices';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'ap-south-1',
@@ -17,7 +18,7 @@ const s3Client = new S3Client({
 });
 
 export class TutorController {
-  constructor(private tutorService: TutorService) {}
+  constructor(private tutorService: ITutorService) {}
 
    async getNotification(req: CustomRequest, res: Response) {
     try {

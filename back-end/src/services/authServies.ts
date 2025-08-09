@@ -2,6 +2,7 @@ import { ITokenService } from "../interfaces/jwtTokenInterface";
 import { IOtpRepository } from "../interfaces/repositoryInterface/IotpRepository";
 import { IUserRepository } from "../interfaces/repositoryInterface/IuserRepository";
 import { IAuthService } from "../interfaces/serviceInterface/IauthServices";
+import { IOtpService } from "../interfaces/serviceInterface/IOtpServerces";
 import { ERROR_MESSAGES, HTTP_STATUS } from "../shared/constant";
 import { TVerifyOtpToRegister } from "../types/otp";
 import {
@@ -19,7 +20,7 @@ import { OtpService } from "./otp/otpServices";
 export class AuthService implements IAuthService {
   constructor(
     private _userRepository: IUserRepository,
-    private _otpService: OtpService,
+    private _otpService: IOtpService,
     private _jwtService:ITokenService
   ) {}
 

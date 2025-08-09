@@ -13,6 +13,7 @@ interface PopulatedTutor {
   _id: string;
   name: string;
 }
+
 export class TransactionRepository implements ITransactionRepository {
  async transactionDetails(
   walletId: string,
@@ -30,7 +31,6 @@ export class TransactionRepository implements ITransactionRepository {
   const query: any = { wallet_id: walletId };
   console.log("FILTERS IN THE REPOSITORY", filters);
 
-  // Apply date range filter
   if (filters.startDate || filters.endDate) {
     query.transaction_date = {};
     if (filters.startDate) {
@@ -45,15 +45,14 @@ export class TransactionRepository implements ITransactionRepository {
     .populate({
       path: "purchase_id",
       populate: [
-        { path: "userId", select: "name" }, // Populate userId to get the user's name
-        { path: "purchase.courseId", select: "title" }, // Populate courseId to get the course title
+        { path: "userId", select: "name" },
+        { path: "purchase.courseId", select: "title" },
       ],
     })
-    .lean(); // Convert Mongoose documents to plain JS objects
+    .lean(); 
 
   console.log("in transaction page");
 
-  // Filter out transactions with missing purchase_id or userId
   transactions = transactions.filter((transaction: any) => {
     const hasValidPurchase = transaction.purchase_id && transaction.purchase_id.userId;
     if (!hasValidPurchase) {
@@ -63,7 +62,6 @@ export class TransactionRepository implements ITransactionRepository {
     return true;
   });
 
-  // Apply courseName filter
   if (filters.courseName) {
     const courseNameLower = filters.courseName.toLowerCase();
     transactions = transactions.filter((transaction: any) => {
@@ -189,12 +187,10 @@ export class TransactionRepository implements ITransactionRepository {
         const courseId = purchaseDoc?.purchase?.[0]?.courseId;
         const userId = purchaseDoc?.userId;
 
-        // Get course and tutor
         if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
           const courseDoc = await courseModel.findById(courseId).lean();
           courseTitle = courseDoc?.title || "N/A";
 
-          // Get tutor name from user model
           const tutorId = courseDoc?.tutorId;
           if (tutorId && mongoose.Types.ObjectId.isValid(tutorId)) {
             const tutorDoc = await userModel.findById(tutorId).lean();
@@ -202,7 +198,6 @@ export class TransactionRepository implements ITransactionRepository {
           }
         }
 
-        // Optional fallback to userId (from purchaser)
         if (tutorName === "N/A" && userId && mongoose.Types.ObjectId.isValid(userId)) {
           const userDoc = await userModel.findById(userId).lean();
           tutorName = userDoc?.name || "N/A";
@@ -228,5 +223,4 @@ export class TransactionRepository implements ITransactionRepository {
     transactions: formattedTransactions,
   };
 }
-
 }
